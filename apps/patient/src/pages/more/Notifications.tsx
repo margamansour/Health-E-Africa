@@ -43,7 +43,7 @@ export function NotificationsPage() {
       <Page>
         {items && items.length === 0 && <EmptyState icon={<Bell className="h-6 w-6" />} title={t("You're all caught up")} body={t("Appointment updates, results and reminders will appear here.")} />}
         {items && items.length > 0 && (
-          <Card className="divide-y divide-slate-100 p-0">
+          <Card className="divide-y divide-ink/5 p-0">
             {items.map((n) => {
               const Icon = ICONS[n.type];
               return (
@@ -56,15 +56,15 @@ export function NotificationsPage() {
                   }}
                   className={cn("flex w-full gap-3 px-4 py-3.5 text-left", !n.readAt && "bg-brand-50/50")}
                 >
-                  <span className="rounded-xl bg-white p-2 text-brand-700 ring-1 ring-slate-200">
+                  <span className="rounded-2xl bg-white p-2 text-brand-700 ring-1 ring-ink/10">
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-2">
                       <span className={cn("text-sm", !n.readAt ? "font-semibold" : "font-medium")}>{t(n.title)}</span>
-                      <span className="shrink-0 text-[11px] text-slate-400">{fmt.relative(n.createdAt)}</span>
+                      <span className="shrink-0 text-[11px] text-ink/40">{fmt.relative(n.createdAt)}</span>
                     </span>
-                    <span className="mt-0.5 block text-xs text-slate-600">{t(n.body)}</span>
+                    <span className="mt-0.5 block text-xs text-ink/65">{t(n.body)}</span>
                   </span>
                 </button>
               );

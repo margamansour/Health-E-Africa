@@ -137,6 +137,14 @@ export const sw: Record<string, string> = {
     "Ninakubali kushiriki muhtasari wangu wa afya na kituo hiki kwa miadi hii. Ruhusa inaisha yenyewe siku 14 baada ya tarehe ya miadi, na ninaweza kuisimamisha wakati wowote.",
 
   // Home
+  "Your health,": "Afya yako,",
+  "all in one place": "yote mahali pamoja",
+  "Profile complete — finish it": "ya wasifu imekamilika — ukamilishe",
+  "Profile complete": "Wasifu umekamilika",
+  items: "vitu",
+  Check: "Angalia",
+  "Your health passport,": "Pasipoti yako ya afya,",
+  "in your pocket": "mfukoni mwako",
   "Good morning": "Habari za asubuhi",
   "Good afternoon": "Habari za mchana",
   "Good evening": "Habari za jioni",

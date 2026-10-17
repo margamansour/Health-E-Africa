@@ -56,7 +56,7 @@ export function BookingSheet({ facility, onClose }: { facility: Facility | null;
       }
     >
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink/65">
           {facility.name} · {facility.town}
         </p>
         <Field label={t("Service")}>
@@ -87,11 +87,11 @@ export function BookingSheet({ facility, onClose }: { facility: Facility | null;
         <Field label={t("Reason for visit")} required>
           {(id) => <Textarea id={id} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder={t("e.g. Diabetes check-up and blood tests")} />}
         </Field>
-        <div className="space-y-2 rounded-xl bg-slate-50 p-3">
+        <div className="space-y-2 rounded-2xl bg-cream p-3">
           <Checkbox checked={f.share} onChange={(v) => setF({ ...f, share: v })}>
             <span className="font-medium">{t("Share my health summary with this facility")}</span>
           </Checkbox>
-          {f.share && <p className="pl-8 text-xs text-slate-600">{t(APPOINTMENT_SHARE_CONSENT)}</p>}
+          {f.share && <p className="pl-8 text-xs text-ink/65">{t(APPOINTMENT_SHARE_CONSENT)}</p>}
         </div>
         <Notice tone="blue">{t("This is a request. The facility will confirm a time or suggest another one.")}</Notice>
       </div>

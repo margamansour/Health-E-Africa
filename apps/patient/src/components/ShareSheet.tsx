@@ -132,22 +132,22 @@ export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClo
     <Sheet open={open} onClose={onClose} title={t("Share my summary")} footer={footer}>
       {step === "what" && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">{t("What would you like to share?")}</p>
+          <p className="text-sm text-ink/65">{t("What would you like to share?")}</p>
           <div className="space-y-2">
             {(Object.keys(SUMMARY_TYPES) as SummaryShare["summaryType"][]).map((k) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => pickType(k)}
-                className={cn("w-full rounded-xl border p-3 text-left", type === k ? "border-brand-600 bg-brand-50" : "border-slate-200")}
+                className={cn("w-full rounded-2xl border p-3 text-left", type === k ? "border-brand-600 bg-brand-50" : "border-ink/10")}
               >
                 <span className="block text-sm font-semibold">{t(SUMMARY_TYPES[k].label)}</span>
-                <span className="block text-xs text-slate-500">{t(SUMMARY_TYPES[k].description)}</span>
+                <span className="block text-xs text-ink/55">{t(SUMMARY_TYPES[k].description)}</span>
               </button>
             ))}
           </div>
-          <div className="space-y-2 rounded-xl bg-slate-50 p-3">
-            <p className="text-xs font-semibold uppercase text-slate-500">{t("Included")}</p>
+          <div className="space-y-2 rounded-2xl bg-cream p-3">
+            <p className="text-xs font-semibold uppercase text-ink/55">{t("Included")}</p>
             {ALL_SECTIONS.map((s) => (
               <Checkbox key={s} checked={sections.includes(s)} onChange={() => toggle(s)}>
                 {t(SECTION_LABELS[s])}
@@ -157,10 +157,10 @@ export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClo
           {sections.includes("records") && (
             <div className="space-y-2">
               <p className="text-sm font-medium">{t("Choose documents")}</p>
-              {records.length === 0 && <p className="text-xs text-slate-500">{t("You haven't uploaded any records yet.")}</p>}
+              {records.length === 0 && <p className="text-xs text-ink/55">{t("You haven't uploaded any records yet.")}</p>}
               {records.map((r) => (
                 <Checkbox key={r.id} checked={recordIds.includes(r.id)} onChange={(v) => setRecordIds((cur) => (v ? [...cur, r.id] : cur.filter((x) => x !== r.id)))}>
-                  {r.title} <span className="text-slate-400">· {fmt.date(r.date)}</span>
+                  {r.title} <span className="text-ink/40">· {fmt.date(r.date)}</span>
                 </Checkbox>
               ))}
             </div>
@@ -204,22 +204,22 @@ export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClo
 
       {step === "consent" && (
         <div className="space-y-4">
-          <div className="space-y-1 rounded-xl bg-slate-50 p-4 text-sm ring-1 ring-slate-200">
+          <div className="space-y-1 rounded-2xl bg-cream p-4 text-sm ring-1 ring-ink/10">
             <p>
-              <span className="text-slate-500">{t("Recipient")}:</span> <strong>{recipientLabel}</strong>
+              <span className="text-ink/55">{t("Recipient")}:</span> <strong>{recipientLabel}</strong>
             </p>
             <p>
-              <span className="text-slate-500">{t("Includes")}:</span> {effectiveSections.map((s) => t(SECTION_LABELS[s])).join(", ")}
+              <span className="text-ink/55">{t("Includes")}:</span> {effectiveSections.map((s) => t(SECTION_LABELS[s])).join(", ")}
               {recordIds.length > 0 && ` (${recordIds.length})`}
             </p>
             <p>
-              <span className="text-slate-500">{t("Reason")}:</span> {purpose || t("Medical care")}
+              <span className="text-ink/55">{t("Reason")}:</span> {purpose || t("Medical care")}
             </p>
             <p>
-              <span className="text-slate-500">{t("Access ends")}:</span> {fmt.dateTime(new Date(Date.now() + hours * 3600_000).toISOString())}
+              <span className="text-ink/55">{t("Access ends")}:</span> {fmt.dateTime(new Date(Date.now() + hours * 3600_000).toISOString())}
             </p>
           </div>
-          <p className="text-sm leading-relaxed text-slate-700">{t(SHARE_CONSENT)}</p>
+          <p className="text-sm leading-relaxed text-ink/80">{t(SHARE_CONSENT)}</p>
           <Checkbox checked={agree} onChange={setAgree}>
             {t("I agree")}
           </Checkbox>
@@ -233,10 +233,10 @@ export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClo
           </div>
           <div>
             <p className="font-semibold">{t("Summary shared")}</p>
-            <p className="text-sm text-slate-500">{t("Access ends {{date}}", { date: fmt.dateTime(result.expiresAt) })}</p>
+            <p className="text-sm text-ink/55">{t("Access ends {{date}}", { date: fmt.dateTime(result.expiresAt) })}</p>
           </div>
-          {qr && <img src={qr} alt={t("QR code for the shared summary")} className="mx-auto rounded-xl ring-1 ring-slate-200" />}
-          <p className="text-xs text-slate-500">{t("The clinic can scan this code or open the link.")}</p>
+          {qr && <img src={qr} alt={t("QR code for the shared summary")} className="mx-auto rounded-2xl ring-1 ring-ink/10" />}
+          <p className="text-xs text-ink/55">{t("The clinic can scan this code or open the link.")}</p>
           <div className="flex gap-2">
             <Input readOnly value={shareUrl(result.token)} onFocus={(e) => e.target.select()} className="text-xs" />
             <Button variant="outline" size="icon" onClick={() => void copy()} aria-label={t("Copy link")}>

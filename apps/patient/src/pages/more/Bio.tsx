@@ -87,7 +87,7 @@ export function BioPage() {
             <LocateFixed className="h-4 w-4" />
             {f.lat != null ? t("Update my location") : t("Use my current location")}
           </Button>
-          <p className="text-xs text-slate-500">{t("Used to show care near you. Without it, we use the centre of your county.")}</p>
+          <p className="text-xs text-ink/55">{t("Used to show care near you. Without it, we use the centre of your county.")}</p>
           <Field label={t("Delivery address")}>{(id) => <Textarea id={id} className="min-h-16" value={f.deliveryAddress ?? ""} onChange={(e) => set({ deliveryAddress: e.target.value || undefined })} />}</Field>
         </Card>
 
@@ -149,7 +149,7 @@ export function BioPage() {
         >
           {t("Insurance")}
         </SectionTitle>
-        {f.insurance.length === 0 && <Card className="text-sm text-slate-500">{t("Add your SHA or private insurance to find places that accept it.")}</Card>}
+        {f.insurance.length === 0 && <Card className="text-sm text-ink/55">{t("Add your SHA or private insurance to find places that accept it.")}</Card>}
         {f.insurance.map((ins, i) => (
           <Card key={i} className="space-y-3">
             <div className="flex gap-2">

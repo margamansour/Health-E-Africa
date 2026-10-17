@@ -58,17 +58,17 @@ export function ImmunisationsPage() {
       />
       <Page>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <Card className="p-3">
-            <p className="text-2xl font-bold text-red-600">{counts.overdue}</p>
-            <p className="text-xs text-slate-500">{t("Overdue")}</p>
+          <Card tone="coral" className="p-3">
+            <p className="text-3xl font-extrabold">{counts.overdue}</p>
+            <p className="text-xs font-semibold text-ink/70">{t("Overdue")}</p>
           </Card>
-          <Card className="p-3">
-            <p className="text-2xl font-bold text-amber-600">{counts.due}</p>
-            <p className="text-xs text-slate-500">{t("Coming up")}</p>
+          <Card tone="butter" className="p-3">
+            <p className="text-3xl font-extrabold">{counts.due}</p>
+            <p className="text-xs font-semibold text-ink/70">{t("Coming up")}</p>
           </Card>
-          <Card className="p-3">
-            <p className="text-2xl font-bold text-emerald-600">{counts.given}</p>
-            <p className="text-xs text-slate-500">{t("Given")}</p>
+          <Card tone="mint" className="p-3">
+            <p className="text-3xl font-extrabold">{counts.given}</p>
+            <p className="text-xs font-semibold text-ink/70">{t("Given")}</p>
           </Card>
         </div>
         <Chips
@@ -83,23 +83,23 @@ export function ImmunisationsPage() {
         {all.length === 0 ? (
           <EmptyState icon={<Syringe className="h-6 w-6" />} title={t("No vaccines recorded")} body={t("Add vaccines from your vaccination card so you know when the next dose is due.")} action={<Button onClick={() => setEdit(null)}>{t("Add vaccine")}</Button>} />
         ) : groups.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">{t("Nothing here.")}</p>
+          <p className="py-8 text-center text-sm text-ink/55">{t("Nothing here.")}</p>
         ) : (
           groups.map(([vaccine, doses]) => (
             <Card key={vaccine} className="p-0">
               <div className="flex items-center justify-between px-4 pt-3">
                 <p className="font-semibold">{vaccine}</p>
-                <span className="text-xs text-slate-500">{t("{{n}} of {{total}} doses", { n: doses.filter((d) => d.dateGiven).length, total: doses[0]!.seriesTotal })}</span>
+                <span className="text-xs text-ink/55">{t("{{n}} of {{total}} doses", { n: doses.filter((d) => d.dateGiven).length, total: doses[0]!.seriesTotal })}</span>
               </div>
               <ul className="mt-2">
                 {doses.map((d) => (
                   <li key={d.id}>
-                    <button type="button" onClick={() => setEdit(d)} className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-left">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold">{d.doseNumber}</span>
+                    <button type="button" onClick={() => setEdit(d)} className="flex w-full items-center gap-3 border-t border-ink/10 px-4 py-2.5 text-left">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/5 text-xs font-semibold">{d.doseNumber}</span>
                       <span className="min-w-0 flex-1 text-sm">
                         <span className="block">{d.dateGiven ? fmt.date(d.dateGiven) : d.dueDate ? t("Due {{date}}", { date: fmt.date(d.dueDate) }) : t("No date")}</span>
                         {(d.batchNumber || d.administeredBy) && (
-                          <span className="block truncate text-xs text-slate-500">
+                          <span className="block truncate text-xs text-ink/55">
                             {[d.administeredBy, d.batchNumber && `${t("Batch")} ${d.batchNumber}`].filter(Boolean).join(" · ")}
                           </span>
                         )}

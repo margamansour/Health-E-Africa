@@ -28,22 +28,23 @@ export interface NavItem {
   label: string;
   description: string;
   icon: LucideIcon;
+  tone: string;
 }
 
 export const HEALTH_LINKS: NavItem[] = [
-  { to: "/summary", label: "Medical summary", description: "Your health at a glance, and sharing", icon: ClipboardList },
-  { to: "/records", label: "Records", description: "Letters, reports and documents", icon: FileText },
-  { to: "/results", label: "Results", description: "Blood tests and lab results", icon: FlaskConical },
-  { to: "/immunisations", label: "Immunisations", description: "Vaccines given and due", icon: Syringe },
+  { to: "/summary", label: "Medical summary", description: "Your health at a glance, and sharing", icon: ClipboardList, tone: "bg-lavender" },
+  { to: "/records", label: "Records", description: "Letters, reports and documents", icon: FileText, tone: "bg-peach" },
+  { to: "/results", label: "Results", description: "Blood tests and lab results", icon: FlaskConical, tone: "bg-mint" },
+  { to: "/immunisations", label: "Immunisations", description: "Vaccines given and due", icon: Syringe, tone: "bg-butter" },
 ];
 
 export const MORE_LINKS: NavItem[] = [
-  { to: "/appointments", label: "My appointments", description: "Requests and bookings", icon: Stethoscope },
-  { to: "/prescriptions", label: "Prescriptions", description: "Repeat and acute medicines", icon: Pill },
-  { to: "/calendar", label: "Calendar", description: "Events and health reminders", icon: CalendarDays },
-  { to: "/notifications", label: "Notifications", description: "Updates and reminders", icon: Bell },
-  { to: "/bio", label: "My bio", description: "Personal and health profile", icon: User },
-  { to: "/settings", label: "Settings", description: "Notifications, privacy, account", icon: Settings },
+  { to: "/appointments", label: "My appointments", description: "Requests and bookings", icon: Stethoscope, tone: "bg-sky" },
+  { to: "/prescriptions", label: "Prescriptions", description: "Repeat and acute medicines", icon: Pill, tone: "bg-rose" },
+  { to: "/calendar", label: "Calendar", description: "Events and health reminders", icon: CalendarDays, tone: "bg-butter" },
+  { to: "/notifications", label: "Notifications", description: "Updates and reminders", icon: Bell, tone: "bg-coral" },
+  { to: "/bio", label: "My bio", description: "Personal and health profile", icon: User, tone: "bg-mint" },
+  { to: "/settings", label: "Settings", description: "Notifications, privacy, account", icon: Settings, tone: "bg-sage" },
 ];
 
 const HEALTH_PATHS = ["/health", ...HEALTH_LINKS.map((l) => l.to)];
@@ -70,21 +71,21 @@ export function LinkList({ links, onPick }: { links: NavItem[]; onPick: (to: str
   const { t } = useTranslation();
   const unread = useUnreadCount();
   return (
-    <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70">
+    <ul className="space-y-2">
       {links.map((l) => (
         <li key={l.to}>
-          <button type="button" onClick={() => onPick(l.to)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50">
-            <span className="rounded-xl bg-brand-50 p-2 text-brand-700">
+          <button type="button" onClick={() => onPick(l.to)} className="flex w-full items-center gap-3 rounded-[24px] bg-white px-3 py-3 text-left shadow-[0_2px_12px_-6px_rgba(35,32,47,0.12)] transition active:scale-[0.99]">
+            <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink", l.tone)}>
               <l.icon className="h-5 w-5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-medium text-slate-900">{t(l.label)}</span>
-              <span className="block truncate text-xs text-slate-500">{t(l.description)}</span>
+              <span className="block font-bold text-ink">{t(l.label)}</span>
+              <span className="block truncate text-xs text-ink/55">{t(l.description)}</span>
             </span>
             {l.to === "/notifications" && unread > 0 && (
               <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">{unread}</span>
             )}
-            <ChevronRight className="h-4 w-4 text-slate-400" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cream"><ChevronRight className="h-4 w-4 text-ink" /></span>
           </button>
         </li>
       ))}
@@ -101,28 +102,40 @@ function BottomNav() {
   const inMore = MORE_PATHS.some((p) => pathname.startsWith(p));
 
   const tab = (activeTab: boolean) =>
-    cn("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition", activeTab ? "text-brand-700" : "text-slate-500");
+    cn(
+      "flex h-12 items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition",
+      activeTab ? "bg-white px-4 text-ink" : "w-12 text-white/70 hover:text-white",
+    );
+  const label = (activeTab: boolean, text: string) => (activeTab ? <span>{text}</span> : <span className="sr-only">{text}</span>);
 
   return (
     <>
-      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur" aria-label={t("Main")}>
-        <div className="mx-auto flex max-w-lg">
+      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 px-4 pt-2" aria-label={t("Main")}>
+        <div className="mx-auto mb-1 flex max-w-md items-center justify-between rounded-full bg-ink p-1.5 shadow-[0_12px_30px_-10px_rgba(35,32,47,0.6)]">
           <NavLink to="/" end className={({ isActive }) => tab(isActive)}>
-            <Home className="h-6 w-6" />
-            {t("Home")}
+            {({ isActive }) => (
+              <>
+                <Home className="h-5 w-5" />
+                {label(isActive, t("Home"))}
+              </>
+            )}
           </NavLink>
           <button type="button" className={tab(inHealth)} onClick={() => setSheet("health")}>
-            <HeartPulse className="h-6 w-6" />
-            {t("Health")}
+            <HeartPulse className="h-5 w-5" />
+            {label(inHealth, t("Health"))}
           </button>
           <NavLink to="/find-care" className={({ isActive }) => tab(isActive)}>
-            <Stethoscope className="h-6 w-6" />
-            {t("Care")}
+            {({ isActive }) => (
+              <>
+                <Stethoscope className="h-5 w-5" />
+                {label(isActive, t("Care"))}
+              </>
+            )}
           </NavLink>
           <button type="button" className={cn(tab(inMore), "relative")} onClick={() => setSheet("more")}>
-            <LayoutGrid className="h-6 w-6" />
-            {t("More")}
-            {unread > 0 && <span className="absolute right-[calc(50%-18px)] top-1.5 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white" />}
+            <LayoutGrid className="h-5 w-5" />
+            {label(inMore, t("More"))}
+            {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink" />}
           </button>
         </div>
       </nav>
@@ -135,11 +148,13 @@ function BottomNav() {
 export function AppShell() {
   const { t } = useTranslation();
   return (
-    <div className="mx-auto min-h-dvh max-w-lg bg-slate-50 pb-24 shadow-sm">
-      <div className="bg-amber-100 px-4 py-1.5 text-center text-xs font-medium text-amber-900">
-        {t("Demo mode — use sample data only. Your data stays on this device.")}
+    <div className="mx-auto min-h-dvh max-w-lg bg-cream pb-28">
+      <div className="px-4 pt-2">
+        <p className="rounded-full bg-butter px-3 py-1 text-center text-[11px] font-semibold text-ink">
+          {t("Demo mode — use sample data only. Your data stays on this device.")}
+        </p>
       </div>
-      <Suspense fallback={<div className="flex justify-center py-24"><span className="h-8 w-8 animate-spin rounded-full border-4 border-brand-100 border-t-brand-700" /></div>}>
+      <Suspense fallback={<div className="flex justify-center py-24"><span className="h-8 w-8 animate-spin rounded-full border-4 border-lavender border-t-ink" /></div>}>
         <Outlet />
       </Suspense>
       <BottomNav />
@@ -151,20 +166,20 @@ export function PageHeader({ title, back, action, subtitle }: { title: string; b
   const navigate = useNavigate();
   const { t } = useTranslation();
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-slate-200/70 bg-slate-50/95 px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-30 flex items-center gap-3 bg-cream/90 px-4 py-3 backdrop-blur">
       {back && (
         <button
           type="button"
           onClick={() => (typeof back === "string" ? navigate(back) : navigate(-1))}
-          className="-ml-2 rounded-full p-2 text-slate-700 hover:bg-slate-200"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-ink shadow-[0_2px_12px_-6px_rgba(35,32,47,0.15)]"
           aria-label={t("Back")}
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-bold text-slate-900">{title}</h1>
-        {subtitle && <p className="truncate text-xs text-slate-500">{subtitle}</p>}
+        <h1 className="truncate text-2xl font-extrabold tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="truncate text-xs font-medium text-ink/55">{subtitle}</p>}
       </div>
       {action}
     </header>

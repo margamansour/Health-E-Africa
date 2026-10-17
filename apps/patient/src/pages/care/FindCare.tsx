@@ -77,12 +77,12 @@ export function FindCarePage() {
       <Page>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("Search name, town or service")}
-              className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="h-11 w-full rounded-2xl border border-ink/10 bg-white pl-9 pr-3 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
           <Button variant="outline" size="icon" onClick={locate} aria-label={t("Use my location")}>
@@ -98,23 +98,23 @@ export function FindCarePage() {
           onChange={setType}
           options={[{ value: "all" as const, label: t("All") }, ...(Object.keys(TYPE_LABEL) as FacilityType[]).map((k) => ({ value: k, label: t(TYPE_LABEL[k]) }))]}
         />
-        <p className="text-xs text-slate-500">{t("{{count}} places", { count: list.length })}</p>
+        <p className="text-xs text-ink/55">{t("{{count}} places", { count: list.length })}</p>
         {list.map((f) => {
           const Icon = TYPE_ICON[f.type];
           const insured = f.insurers.some((i) => myInsurers.includes(i));
           return (
             <Card key={f.id} onClick={() => setSelected(f)} className="space-y-2">
               <div className="flex items-start gap-3">
-                <span className="rounded-xl bg-brand-50 p-2.5 text-brand-700">
+                <span className="rounded-2xl bg-brand-50 p-2.5 text-brand-700">
                   <Icon className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold leading-snug">{f.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink/55">
                     {t(TYPE_LABEL[f.type])} · {f.town}, {f.county}
                   </p>
                 </div>
-                {f.km != null && <span className="shrink-0 text-xs font-medium text-slate-600">{formatKm(f.km)}</span>}
+                {f.km != null && <span className="shrink-0 text-xs font-medium text-ink/65">{formatKm(f.km)}</span>}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge tone="amber">
@@ -137,7 +137,7 @@ export function FindCarePage() {
           );
         })}
         {list.length === 0 && (
-          <div className="py-10 text-center text-sm text-slate-500">
+          <div className="py-10 text-center text-sm text-ink/55">
             {t("No places match. Try removing some filters.")}
             <div className="mt-3">
               <Button variant="secondary" size="sm" onClick={() => setFilters(DEFAULT_FILTERS)}>
@@ -146,7 +146,7 @@ export function FindCarePage() {
             </div>
           </div>
         )}
-        <p className="px-1 pt-2 text-xs text-slate-400">{t("Demo listings — not real facilities. Live listings will come from the Kenya Master Health Facility List with licence checks.")}</p>
+        <p className="px-1 pt-2 text-xs text-ink/40">{t("Demo listings — not real facilities. Live listings will come from the Kenya Master Health Facility List with licence checks.")}</p>
       </Page>
 
       <FiltersSheet open={showFilters} onClose={() => setShowFilters(false)} value={filters} onChange={setFilters} hasInsurance={myInsurers.length > 0} />
@@ -302,14 +302,14 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
           {f.delivers && <Badge tone="blue">{t("Home delivery")}</Badge>}
         </div>
         <div className="space-y-2 text-sm">
-          <a className="flex items-start gap-2 text-slate-700" href={`https://www.google.com/maps/search/?api=1&query=${f.lat},${f.lng}`} target="_blank" rel="noreferrer">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+          <a className="flex items-start gap-2 text-ink/80" href={`https://www.google.com/maps/search/?api=1&query=${f.lat},${f.lng}`} target="_blank" rel="noreferrer">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-ink/40" />
             <span>
               {f.address}, {f.town}, {f.county} <span className="text-brand-700">· {t("Map")}</span>
             </span>
           </a>
-          <p className="flex items-center gap-2 text-slate-700">
-            <Clock className="h-4 w-4 text-slate-400" />
+          <p className="flex items-center gap-2 text-ink/80">
+            <Clock className="h-4 w-4 text-ink/40" />
             {f.hours}
           </p>
           <a className="flex items-center gap-2 text-brand-700" href={`tel:${f.phone}`}>
@@ -324,7 +324,7 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
           )}
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase text-slate-500">{t("Services")}</p>
+          <p className="mb-1.5 text-xs font-semibold uppercase text-ink/55">{t("Services")}</p>
           <div className="flex flex-wrap gap-1.5">
             {f.services.map((s) => (
               <Badge key={s}>{t(s)}</Badge>
@@ -332,7 +332,7 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
           </div>
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase text-slate-500">{t("Insurance & payment")}</p>
+          <p className="mb-1.5 text-xs font-semibold uppercase text-ink/55">{t("Insurance & payment")}</p>
           <div className="flex flex-wrap gap-1.5">
             {f.insurers.map((s) => (
               <Badge key={s} tone={profile?.insurance.some((i) => i.provider === s) ? "brand" : "slate"}>
@@ -341,7 +341,7 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
             ))}
           </div>
         </div>
-        <div className="rounded-xl bg-emerald-50 p-3">
+        <div className="rounded-2xl bg-emerald-50 p-3">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-800">
             <BadgeCheck className="h-4 w-4" />
             {t("Licence checked")}
@@ -356,7 +356,7 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
         <Notice tone="blue">{t("Listing a facility is not a recommendation. Check that it's right for you.")}</Notice>
         <button
           type="button"
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-500"
+          className="flex items-center gap-1.5 text-xs font-medium text-ink/55"
           onClick={() => toast.success(t("Thanks — we'll check this listing."))}
         >
           <Flag className="h-3.5 w-3.5" />

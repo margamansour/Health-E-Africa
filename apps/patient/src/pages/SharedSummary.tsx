@@ -70,11 +70,11 @@ export function SharedSummaryPage() {
   if (state !== "ok" || !data)
     return (
       <div className="mx-auto flex min-h-dvh max-w-2xl flex-col items-center justify-center px-6 text-center">
-        <ShieldAlert className="h-10 w-10 text-slate-400" />
+        <ShieldAlert className="h-10 w-10 text-ink/40" />
         <h1 className="mt-3 text-xl font-bold">
           {state === "expired" ? t("This link has expired") : state === "revoked" ? t("The patient stopped sharing this summary") : t("This link isn't valid")}
         </h1>
-        <p className="mt-2 text-sm text-slate-500">{t("Ask the patient to share their summary again.")}</p>
+        <p className="mt-2 text-sm text-ink/55">{t("Ask the patient to share their summary again.")}</p>
       </div>
     );
 
@@ -82,7 +82,7 @@ export function SharedSummaryPage() {
   const has = (s: SummaryShare["sections"][number]) => share.sections.includes(s);
 
   return (
-    <div className="min-h-dvh bg-slate-100">
+    <div className="min-h-dvh bg-ink/5">
       <header className="bg-brand-800 px-4 py-3 text-white">
         <div className="mx-auto flex max-w-2xl items-center gap-2">
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-7 w-7 rounded-lg" />
@@ -94,7 +94,7 @@ export function SharedSummaryPage() {
         </div>
       </header>
       <main className="mx-auto max-w-2xl space-y-4 px-4 py-5">
-        <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div className="flex items-center gap-2 rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
           <Clock className="h-4 w-4 shrink-0" />
           {t("Access ends {{date}}. This view is recorded and the patient can see it.", { date: fmt.dateTime(share.expiresAt) })}
         </div>
@@ -102,10 +102,10 @@ export function SharedSummaryPage() {
         {has("identity") && profile && (
           <Section title={t("Patient")}>
             <p className="text-lg font-semibold">{profile.fullName}</p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink/65">
               {t(profile.sex === "female" ? "Female" : "Male")} · {t("{{age}} years", { age: ageOn(profile.dob) })} · {t("Born")} {fmt.date(profile.dob)}
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink/65">
               {t("Blood group")}: <strong>{profile.bloodGroup ?? "—"}</strong>
             </p>
           </Section>
@@ -120,7 +120,7 @@ export function SharedSummaryPage() {
         {has("allergies") && (
           <Section title={t("Allergies")} tone="red">
             {data.allergies.length === 0 ? (
-              <p className="text-sm text-slate-500">{t("No known allergies recorded")}</p>
+              <p className="text-sm text-ink/55">{t("No known allergies recorded")}</p>
             ) : (
               <ul className="space-y-1 text-sm">
                 {data.allergies.map((a) => (
@@ -159,7 +159,7 @@ export function SharedSummaryPage() {
           <Section title={t("Lab results")}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-slate-500">
+                <tr className="text-left text-xs text-ink/55">
                   <th className="py-1">{t("Test")}</th>
                   <th>{t("Result")}</th>
                   <th>{t("Date")}</th>
@@ -169,12 +169,12 @@ export function SharedSummaryPage() {
                 {data.labs.map((r) => {
                   const f = flagFor(r);
                   return (
-                    <tr key={r.id} className="border-t border-slate-100">
+                    <tr key={r.id} className="border-t border-ink/10">
                       <td className="py-1.5">{r.analyte}</td>
                       <td className={f === "high" || f === "low" ? "font-semibold text-red-600" : ""}>
                         {r.value} {r.unit}
                       </td>
-                      <td className="text-slate-500">{fmt.date(r.date)}</td>
+                      <td className="text-ink/55">{fmt.date(r.date)}</td>
                     </tr>
                   );
                 })}
@@ -198,13 +198,13 @@ export function SharedSummaryPage() {
             <ul className="space-y-2 text-sm">
               {data.records.map((r) => (
                 <li key={r.id} className="flex items-start gap-2">
-                  <FileText className="mt-0.5 h-4 w-4 text-slate-400" />
+                  <FileText className="mt-0.5 h-4 w-4 text-ink/40" />
                   <div>
                     <p className="font-medium">{r.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink/55">
                       {fmt.date(r.date)} {r.facilityName && `· ${r.facilityName}`}
                     </p>
-                    {r.notes && <p className="text-xs text-slate-600">{r.notes}</p>}
+                    {r.notes && <p className="text-xs text-ink/65">{r.notes}</p>}
                     {r.fileId && (
                       <button type="button" className="text-xs font-medium text-brand-700" onClick={() => void openFile(r)}>
                         {t("Open file")}
@@ -216,7 +216,7 @@ export function SharedSummaryPage() {
             </ul>
           </Section>
         )}
-        <p className="text-center text-xs text-slate-400">{t("Patient-held record. Verify clinically important information with the patient.")}</p>
+        <p className="text-center text-xs text-ink/40">{t("Patient-held record. Verify clinically important information with the patient.")}</p>
       </main>
     </div>
   );
@@ -224,8 +224,8 @@ export function SharedSummaryPage() {
 
 function Section({ title, children, tone }: { title: string; children: React.ReactNode; tone?: "red" }) {
   return (
-    <section className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ${tone === "red" ? "ring-red-200" : "ring-slate-200"}`}>
-      <h2 className={`mb-2 text-xs font-semibold uppercase tracking-wide ${tone === "red" ? "text-red-700" : "text-slate-500"}`}>{title}</h2>
+    <section className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ${tone === "red" ? "ring-red-200" : "ring-ink/10"}`}>
+      <h2 className={`mb-2 text-xs font-semibold uppercase tracking-wide ${tone === "red" ? "text-red-700" : "text-ink/55"}`}>{title}</h2>
       {children}
     </section>
   );

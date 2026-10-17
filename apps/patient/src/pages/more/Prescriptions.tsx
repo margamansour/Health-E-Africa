@@ -62,7 +62,7 @@ export function PrescriptionsPage() {
         <Card className="flex items-center gap-3">
           <Store className="h-5 w-5 text-brand-700" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500">{t("My pharmacy")}</p>
+            <p className="text-xs text-ink/55">{t("My pharmacy")}</p>
             <p className="truncate text-sm font-medium">{pharmacy ? `${pharmacy.name}, ${pharmacy.town}` : t("Not chosen yet")}</p>
           </div>
           <Link to="/find-care" className="text-sm font-medium text-brand-700">
@@ -81,8 +81,8 @@ export function PrescriptionsPage() {
               />
             ) : (
               <>
-                <p className="px-1 text-sm text-slate-600">{t("Select the medicines you need, then request them.")}</p>
-                <Card className="divide-y divide-slate-100 p-0">
+                <p className="px-1 text-sm text-ink/65">{t("Select the medicines you need, then request them.")}</p>
+                <Card className="divide-y divide-ink/5 p-0">
                   {repeats.map((m) => {
                     const conflicts = findAllergyConflicts(m.name, allergies);
                     const overdue = m.reviewDate && m.reviewDate < tk;
@@ -102,12 +102,12 @@ export function PrescriptionsPage() {
                             <p className="font-medium">
                               {m.name} {m.dose}
                             </p>
-                            <p className="text-xs text-slate-500">{m.frequency}</p>
+                            <p className="text-xs text-ink/55">{m.frequency}</p>
                           </button>
                           {pending && <Badge tone="amber">{t("Requested")}</Badge>}
                         </div>
                         {m.reviewDate && (
-                          <p className={`flex items-center gap-1 pl-8 text-xs ${overdue ? "font-medium text-red-600" : "text-slate-500"}`}>
+                          <p className={`flex items-center gap-1 pl-8 text-xs ${overdue ? "font-medium text-red-600" : "text-ink/55"}`}>
                             <CalendarClock className="h-3.5 w-3.5" />
                             {overdue ? t("Medication review overdue since {{date}}", { date: fmt.date(m.reviewDate) }) : t("Medication review due {{date}}", { date: fmt.date(m.reviewDate) })}
                           </p>
@@ -178,41 +178,41 @@ function RequestCard({ req, pharmacyName }: { req: MedRequest; pharmacyName: str
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold">{req.type === "repeat" ? t("Repeat medicines") : t("New medicine request")}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink/55">
             {pharmacyName} · {fmt.dateTime(req.createdAt)}
           </p>
         </div>
         <Badge tone={st.tone}>{t(st.label)}</Badge>
       </div>
-      <ul className="text-sm text-slate-700">
+      <ul className="text-sm text-ink/80">
         {req.items.map((i, n) => (
           <li key={n}>
             • {i.name} {i.dose}
           </li>
         ))}
-        {req.acuteDetails && <li className="text-slate-600">“{req.acuteDetails}”</li>}
+        {req.acuteDetails && <li className="text-ink/65">“{req.acuteDetails}”</li>}
       </ul>
       {!["rejected", "cancelled"].includes(req.status) && (
         <ol className="flex items-center gap-1">
           {steps.map((s, i) => (
             <li key={s} className="flex flex-1 items-center gap-1">
-              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${reached.has(s) ? "bg-brand-600 text-white" : "bg-slate-200 text-slate-500"}`}>
+              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${reached.has(s) ? "bg-brand-600 text-white" : "bg-ink/10 text-ink/55"}`}>
                 {reached.has(s) ? <Check className="h-3 w-3" /> : i + 1}
               </span>
-              {i < steps.length - 1 && <span className={`h-0.5 flex-1 ${reached.has(steps[i + 1]!) ? "bg-brand-600" : "bg-slate-200"}`} />}
+              {i < steps.length - 1 && <span className={`h-0.5 flex-1 ${reached.has(steps[i + 1]!) ? "bg-brand-600" : "bg-ink/10"}`} />}
             </li>
           ))}
         </ol>
       )}
       {lastNote && <Notice tone={req.status === "rejected" ? "red" : "blue"}>{lastNote}</Notice>}
-      <p className="text-xs text-slate-500">{req.delivery === "delivery" ? `${t("Deliver to")}: ${req.deliveryAddress}` : t("Collect from pharmacy")}</p>
+      <p className="text-xs text-ink/55">{req.delivery === "delivery" ? `${t("Deliver to")}: ${req.deliveryAddress}` : t("Collect from pharmacy")}</p>
       {req.status === "submitted" && (
         <Button size="sm" variant="outline" className="text-red-600" onClick={() => void cancelMedRequest(req.id)}>
           {t("Cancel request")}
         </Button>
       )}
       {isOpen && (
-        <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-2.5">
+        <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-2.5">
           <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
             <Wand2 className="h-3.5 w-3.5" />
             {t("Demo: act as the pharmacy")}
@@ -306,7 +306,7 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
     >
       <div className="space-y-4">
         {type === "repeat" ? (
-          <ul className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm">
+          <ul className="space-y-1 rounded-2xl bg-cream p-3 text-sm">
             {meds.map((m) => (
               <li key={m.id} className="flex justify-between">
                 <span>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { ClipboardList, Lock, Share2, Bell, ShieldCheck } from "lucide-react";
+import { ArrowRight, ClipboardList, Lock, Share2, Bell, ShieldCheck } from "lucide-react";
 import { Button, Checkbox, Field, Input, Notice, Select } from "@/components/ui";
 import { COUNTIES } from "@/data/kenya";
 import { LANGUAGES } from "@/i18n";
@@ -62,34 +62,61 @@ export function Welcome() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-white">
-      <div className="bg-gradient-to-br from-brand-700 to-brand-900 px-6 pb-10 pt-10 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl ring-2 ring-white/30" />
-            <span className="text-lg font-bold">Health-e Africa</span>
-          </div>
-          <div className="flex rounded-full bg-white/15 p-0.5 text-xs">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l.code}
-                type="button"
-                onClick={() => void i18n.changeLanguage(l.code)}
-                className={cn("rounded-full px-3 py-1", i18n.language === l.code ? "bg-white text-brand-800" : "text-white")}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-cream">
+      <div className="flex items-center justify-between px-5 pt-5">
+        <div className="flex items-center gap-2">
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-10 w-10 rounded-2xl" />
+          <span className="text-lg font-extrabold">Health-e Africa</span>
         </div>
-        <h1 className="mt-8 text-3xl font-bold leading-tight">{t("Your health passport, in your pocket")}</h1>
-        <p className="mt-2 text-brand-100">{t("Keep your records in one place, share them safely, and get care faster.")}</p>
+        <div className="flex rounded-full bg-white p-1 text-xs font-bold shadow-[0_2px_12px_-6px_rgba(35,32,47,0.15)]">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => void i18n.changeLanguage(l.code)}
+              className={cn("rounded-full px-3 py-1.5", i18n.language === l.code ? "bg-ink text-white" : "text-ink/60")}
+            >
+              {l.code.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="-mt-5 flex-1 rounded-t-3xl bg-white px-6 pb-8 pt-6">
+      {step === "intro" ? (
+        <div className="px-5 pt-6">
+          <h1 className="text-[42px] font-extrabold leading-[1.02] tracking-tight">
+            {t("Your health passport,")}{" "}
+            <span className="font-semibold italic">{t("in your pocket")}</span>
+          </h1>
+          {/* Floating colour blocks, each a part of the passport */}
+          <div className="relative mx-auto mt-4 h-72 max-w-sm" aria-hidden="true">
+            <div className="shape-flower animate-float absolute left-0 top-2 flex h-36 w-36 items-center justify-center bg-rose" style={{ ["--r" as string]: "-12deg", animationDelay: "60ms" }}>
+              <span className="text-center text-sm font-extrabold leading-tight">
+                {t("Records")}
+                <br />
+                <span className="font-semibold">{t("Clinic letter")}</span>
+              </span>
+            </div>
+            <div className="animate-float absolute right-2 top-0 flex h-36 w-36 flex-col items-center justify-center rounded-[28px] bg-butter" style={{ ["--r" as string]: "-10deg", animationDelay: "160ms" }}>
+              <span className="text-lg font-extrabold">{t("Results")}</span>
+              <span className="text-sm font-semibold">HbA1c 6.9%</span>
+            </div>
+            <div className="animate-float absolute bottom-0 left-8 flex h-40 w-40 flex-col items-center justify-center rounded-full bg-sky" style={{ ["--r" as string]: "14deg", animationDelay: "260ms" }}>
+              <span className="text-lg font-extrabold">{t("Vaccines")}</span>
+              <span className="text-sm font-semibold">{t("Due {{date}}", { date: "20/11" })}</span>
+            </div>
+            <div className="animate-float absolute bottom-6 right-4 flex h-24 w-24 items-center justify-center rounded-full bg-mint" style={{ ["--r" as string]: "0deg", animationDelay: "360ms" }}>
+              <span className="text-center text-xs font-extrabold leading-tight">{t("Share")}
+                <br />QR</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex-1 px-5 pb-8 pt-6">
         {step === "intro" && (
           <div className="space-y-5">
-            <ul className="space-y-3 text-sm text-slate-700">
+            <ul className="space-y-3 text-sm font-medium text-ink/80">
               {[
                 { icon: ClipboardList, text: "Clinic letters, scans, blood results and prescriptions in one place" },
                 { icon: Share2, text: "Share your summary with a clinic — you choose what and for how long" },
@@ -97,7 +124,7 @@ export function Welcome() {
                 { icon: Lock, text: "You control who sees your information, and you can see every access" },
               ].map(({ icon: Icon, text }) => (
                 <li key={text} className="flex gap-3">
-                  <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
+                  <Icon className="mt-0.5 h-5 w-5 shrink-0 text-ink" />
                   {t(text)}
                 </li>
               ))}
@@ -120,6 +147,7 @@ export function Welcome() {
               <div className="space-y-2">
                 <Button size="lg" className="w-full" onClick={() => setStep("details")}>
                   {t("Create my health passport")}
+                  <ArrowRight className="h-5 w-5" />
                 </Button>
                 <Button size="lg" variant="secondary" className="w-full" onClick={startSample}>
                   {t("Try it with a sample patient")}
@@ -138,8 +166,8 @@ export function Welcome() {
             }}
           >
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{t("Step {{n}} of {{total}}", { n: 1, total: 2 })}</p>
-              <h2 className="text-xl font-bold">{t("About you")}</h2>
+              <p className="text-xs font-bold uppercase tracking-wider text-ink/50">{t("Step {{n}} of {{total}}", { n: 1, total: 2 })}</p>
+              <h2 className="text-3xl font-extrabold">{t("About you")}</h2>
             </div>
             <Field label={t("Full name")} required>
               {(id) => <Input id={id} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} autoComplete="name" />}
@@ -189,11 +217,11 @@ export function Welcome() {
         {step === "consent" && (
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{t("Step {{n}} of {{total}}", { n: 2, total: 2 })}</p>
-              <h2 className="text-xl font-bold">{t("Your consent")}</h2>
+              <p className="text-xs font-bold uppercase tracking-wider text-ink/50">{t("Step {{n}} of {{total}}", { n: 2, total: 2 })}</p>
+              <h2 className="text-3xl font-extrabold">{t("Your consent")}</h2>
             </div>
-            <div className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 ring-1 ring-slate-200">{t(ACCOUNT_CONSENT)}</div>
-            <p className="text-xs text-slate-500">
+            <div className="rounded-[24px] bg-white p-5 text-sm leading-relaxed text-ink/80">{t(ACCOUNT_CONSENT)}</div>
+            <p className="text-xs text-ink/55">
               {t("Privacy notice version")} {POLICY_VERSION}
             </p>
             <Checkbox checked={agree} onChange={setAgree}>

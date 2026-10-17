@@ -85,19 +85,19 @@ function SummaryContent() {
 
   return (
     <>
-      <Card>
+      <Card tone="lavender" className="p-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-lg font-semibold">{profile.fullName}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-2xl font-extrabold">{profile.fullName}</p>
+            <p className="text-sm text-ink/55">
               {t(profile.sex === "female" ? "Female" : "Male")} · {t("{{age}} years", { age: ageOn(profile.dob) })} · {fmt.date(profile.dob)}
             </p>
           </div>
-          <Link to="/bio" className="rounded-full p-2 text-slate-500 hover:bg-slate-100" aria-label={t("Edit")}>
+          <Link to="/bio" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70" aria-label={t("Edit")}>
             <Pencil className="h-4 w-4" />
           </Link>
         </div>
-        <div className="mt-2 divide-y divide-slate-100">
+        <div className="mt-3 divide-y divide-ink/10 rounded-[20px] bg-white/60 px-3">
           <KeyValue label={t("Blood group")} value={profile.bloodGroup} />
           <KeyValue
             label={t("Organ donor")}
@@ -121,9 +121,9 @@ function SummaryContent() {
       <div id="allergies" className="scroll-mt-20" />
       <SectionTitle action={<AddButton onClick={() => setEditAllergy(null)} />}>{t("Allergies")}</SectionTitle>
       {allergies.length === 0 ? (
-        <Card className="text-sm text-slate-500">{t("No allergies recorded. Add any you know about — it helps keep you safe.")}</Card>
+        <Card className="text-sm text-ink/55">{t("No allergies recorded. Add any you know about — it helps keep you safe.")}</Card>
       ) : (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {allergies.map((a) => (
             <Row key={a.id} onClick={() => setEditAllergy(a)} icon={<AlertTriangle className="h-4 w-4 text-red-600" />} title={a.substance} subtitle={a.reaction}>
               <Badge tone={a.status !== "active" ? "slate" : a.severity === "severe" ? "red" : a.severity === "moderate" ? "amber" : "slate"}>
@@ -137,9 +137,9 @@ function SummaryContent() {
       <div id="conditions" className="scroll-mt-20" />
       <SectionTitle action={<AddButton onClick={() => setEditCondition(null)} />}>{t("Conditions")}</SectionTitle>
       {conditions.length === 0 ? (
-        <Card className="text-sm text-slate-500">{t("No conditions recorded.")}</Card>
+        <Card className="text-sm text-ink/55">{t("No conditions recorded.")}</Card>
       ) : (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {[...activeConditions, ...pastConditions].map((c) => (
             <Row
               key={c.id}
@@ -157,9 +157,9 @@ function SummaryContent() {
       <div id="medications" className="scroll-mt-20" />
       <SectionTitle action={<AddButton onClick={() => setEditMed(null)} />}>{t("Medicines")}</SectionTitle>
       {currentMeds.length === 0 ? (
-        <Card className="text-sm text-slate-500">{t("No current medicines.")}</Card>
+        <Card className="text-sm text-ink/55">{t("No current medicines.")}</Card>
       ) : (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {currentMeds.map((m) => (
             <Row key={m.id} onClick={() => setEditMed(m)} icon={<Pill className="h-4 w-4 text-sky-600" />} title={`${m.name} ${m.dose}`} subtitle={m.frequency}>
               <Badge tone={m.type === "repeat" ? "blue" : "slate"}>{t(m.type === "repeat" ? "Repeat" : "Acute")}</Badge>
@@ -169,12 +169,12 @@ function SummaryContent() {
       )}
       {meds.some((m) => m.status === "stopped") && (
         <details className="text-sm">
-          <summary className="cursor-pointer px-1 text-slate-500">{t("Past medicines")}</summary>
-          <Card className="mt-2 divide-y divide-slate-100 p-0">
+          <summary className="cursor-pointer px-1 text-ink/55">{t("Past medicines")}</summary>
+          <Card className="mt-2 divide-y divide-ink/5 p-0">
             {meds
               .filter((m) => m.status === "stopped")
               .map((m) => (
-                <Row key={m.id} onClick={() => setEditMed(m)} icon={<Pill className="h-4 w-4 text-slate-400" />} title={`${m.name} ${m.dose}`} subtitle={t("Stopped")} />
+                <Row key={m.id} onClick={() => setEditMed(m)} icon={<Pill className="h-4 w-4 text-ink/40" />} title={`${m.name} ${m.dose}`} subtitle={t("Stopped")} />
               ))}
           </Card>
         </details>
@@ -182,9 +182,9 @@ function SummaryContent() {
 
       <SectionTitle action={<Link to="/results" className="text-sm font-medium text-brand-700">{t("All results")}</Link>}>{t("Recent lab results")}</SectionTitle>
       {!latestLabs || latestLabs.length === 0 ? (
-        <Card className="text-sm text-slate-500">{t("No lab results yet.")}</Card>
+        <Card className="text-sm text-ink/55">{t("No lab results yet.")}</Card>
       ) : (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {latestLabs.map((r) => {
             const flag = flagFor(r);
             return (
@@ -200,9 +200,9 @@ function SummaryContent() {
 
       <SectionTitle action={<Link to="/immunisations" className="text-sm font-medium text-brand-700">{t("All")}</Link>}>{t("Immunisations")}</SectionTitle>
       {immunisations.length === 0 ? (
-        <Card className="text-sm text-slate-500">{t("No vaccines recorded.")}</Card>
+        <Card className="text-sm text-ink/55">{t("No vaccines recorded.")}</Card>
       ) : (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {immunisations.slice(0, 5).map((i) => {
             const st = immunisationState(i, tk);
             return (
@@ -214,7 +214,7 @@ function SummaryContent() {
         </Card>
       )}
 
-      <p className="px-1 pt-2 text-xs text-slate-400">{t("This summary is based on information you and your care providers have added. It doesn't replace a clinician's assessment.")}</p>
+      <p className="px-1 pt-2 text-xs text-ink/40">{t("This summary is based on information you and your care providers have added. It doesn't replace a clinician's assessment.")}</p>
 
       <ConditionSheet open={editCondition !== undefined} item={editCondition ?? undefined} onClose={() => setEditCondition(undefined)} />
       <AllergySheet open={editAllergy !== undefined} item={editAllergy ?? undefined} onClose={() => setEditAllergy(undefined)} />
@@ -240,10 +240,10 @@ function Row({ icon, title, subtitle, children, onClick }: { icon: React.ReactNo
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{title}</span>
-        {subtitle && <span className="block truncate text-xs text-slate-500">{subtitle}</span>}
+        {subtitle && <span className="block truncate text-xs text-ink/55">{subtitle}</span>}
       </span>
       {children}
-      {onClick && <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />}
+      {onClick && <ChevronRight className="h-4 w-4 shrink-0 text-ink/25" />}
     </Comp>
   );
 }
@@ -276,12 +276,12 @@ function ShareHistory({ onShare }: { onShare: () => void }) {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate font-semibold">{s.recipientLabel}</p>
-                <p className="text-xs text-slate-500">{s.purpose}</p>
+                <p className="text-xs text-ink/55">{s.purpose}</p>
               </div>
               <Badge tone={state === "active" ? "green" : state === "revoked" ? "red" : "slate"}>{t(state === "active" ? "Active" : state === "revoked" ? "Stopped" : "Expired")}</Badge>
             </div>
-            <p className="text-xs text-slate-600">{s.sections.map((x) => t(SECTION_LABELS[x])).join(" · ")}</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
+            <p className="text-xs text-ink/65">{s.sections.map((x) => t(SECTION_LABELS[x])).join(" · ")}</p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-ink/55">
               <span>
                 {t("Shared")}: {fmt.dateTime(s.createdAt)}
               </span>
@@ -294,7 +294,7 @@ function ShareHistory({ onShare }: { onShare: () => void }) {
                 <Eye className="h-3.5 w-3.5" />
                 {t("Opened {{count}} time(s)", { count: views.length })}
               </summary>
-              <ul className="mt-2 space-y-1 text-xs text-slate-600">
+              <ul className="mt-2 space-y-1 text-xs text-ink/65">
                 {views.length === 0 && <li>{t("Not opened yet")}</li>}
                 {views.map((v) => (
                   <li key={v.id}>

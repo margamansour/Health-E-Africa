@@ -86,8 +86,8 @@ function EventRow({ e, onOpen }: { e: CalendarEvent; onOpen: (e: CalendarEvent) 
     <button type="button" onClick={() => onOpen(e)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
       <span className={cn("h-9 w-1 shrink-0 rounded-full", meta.dot)} />
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate text-sm font-medium", e.doneAt && "text-slate-400 line-through")}>{t(e.title)}</span>
-        <span className="block text-xs text-slate-500">
+        <span className={cn("block truncate text-sm font-medium", e.doneAt && "text-ink/40 line-through")}>{t(e.title)}</span>
+        <span className="block text-xs text-ink/55">
           {e.allDay ? t("All day") : fmt.time(e.start)} · {t(meta.label)}
           {e.source === "reminder" && ` · ${t("Auto reminder")}`}
         </span>
@@ -149,7 +149,7 @@ function MonthView({ events, onOpen, onAdd }: { events: CalendarEvent[]; onOpen:
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
-        <div className="grid grid-cols-7 text-center text-xs text-slate-400">
+        <div className="grid grid-cols-7 text-center text-xs text-ink/40">
           {weekdays.map((w, i) => (
             <div key={i} className="py-1">
               {w}
@@ -167,9 +167,9 @@ function MonthView({ events, onOpen, onAdd }: { events: CalendarEvent[]; onOpen:
                 type="button"
                 onClick={() => setSelected(k)}
                 className={cn(
-                  "mx-auto flex h-11 w-11 flex-col items-center justify-center rounded-xl text-sm",
-                  !inMonth && "text-slate-300",
-                  k === selected ? "bg-brand-700 text-white" : k === tk ? "bg-brand-50 font-bold text-brand-800" : "hover:bg-slate-100",
+                  "mx-auto flex h-11 w-11 flex-col items-center justify-center rounded-2xl text-sm",
+                  !inMonth && "text-ink/25",
+                  k === selected ? "bg-brand-700 text-white" : k === tk ? "bg-brand-50 font-bold text-brand-800" : "hover:bg-ink/5",
                 )}
               >
                 {d.getDate()}
@@ -190,9 +190,9 @@ function MonthView({ events, onOpen, onAdd }: { events: CalendarEvent[]; onOpen:
         </button>
       </div>
       {dayEvents.length === 0 ? (
-        <p className="px-1 text-sm text-slate-500">{t("Nothing on this day.")}</p>
+        <p className="px-1 text-sm text-ink/55">{t("Nothing on this day.")}</p>
       ) : (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {dayEvents.map((e) => (
             <EventRow key={e.id} e={e} onOpen={onOpen} />
           ))}
@@ -218,10 +218,10 @@ function AgendaView({ events, onOpen }: { events: CalendarEvent[]; onOpen: (e: C
     <>
       {[...groups.entries()].map(([day, evs]) => (
         <div key={day}>
-          <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-ink/55">
             {day === today() ? t("Today") : fmt.date(day, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
           </p>
-          <Card className="divide-y divide-slate-100 p-0">
+          <Card className="divide-y divide-ink/5 p-0">
             {evs.map((e) => (
               <EventRow key={e.id} e={e} onOpen={onOpen} />
             ))}
@@ -253,15 +253,15 @@ function ChecksView() {
         {t("Based on your age, sex, conditions and Kenya's national guidelines. Tell us when you last had each check and we'll remind you when the next one is due.")}
       </Notice>
       <p className="px-1 pt-2 text-sm font-semibold">{t("Due now ({{count}})", { count: due.length })}</p>
-      {due.length === 0 && <p className="px-1 text-sm text-slate-500">{t("You're up to date.")}</p>}
+      {due.length === 0 && <p className="px-1 text-sm text-ink/55">{t("You're up to date.")}</p>}
       {due.map((p) => (
         <Card key={p.key} className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <p className="font-medium">{t(p.title)}</p>
             <Badge tone={EVENT_TYPES[p.type].tone}>{t(EVENT_TYPES[p.type].label)}</Badge>
           </div>
-          <p className="text-sm text-slate-600">{t(p.description)}</p>
-          <p className="text-xs text-slate-500">{p.dueDate ? t("Due since {{date}}", { date: fmt.date(p.dueDate) }) : t("No record of when you last had this")}</p>
+          <p className="text-sm text-ink/65">{t(p.description)}</p>
+          <p className="text-xs text-ink/55">{p.dueDate ? t("Due since {{date}}", { date: fmt.date(p.dueDate) }) : t("No record of when you last had this")}</p>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setMarking(p)}>
               <Check className="h-4 w-4" />
@@ -276,19 +276,19 @@ function ChecksView() {
         </Card>
       ))}
       <p className="px-1 pt-4 text-sm font-semibold">{t("Coming up")}</p>
-      {upcoming.length === 0 && <p className="px-1 text-sm text-slate-500">{t("Nothing scheduled yet.")}</p>}
+      {upcoming.length === 0 && <p className="px-1 text-sm text-ink/55">{t("Nothing scheduled yet.")}</p>}
       {upcoming.length > 0 && (
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           {upcoming.map((p) => (
             <div key={p.key} className="flex items-center gap-3 px-4 py-3">
               <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", EVENT_TYPES[p.type].dot)} />
               <span className="min-w-0 flex-1 text-sm">{t(p.title)}</span>
-              <span className="shrink-0 text-xs text-slate-500">{fmt.date(p.dueDate)}</span>
+              <span className="shrink-0 text-xs text-ink/55">{fmt.date(p.dueDate)}</span>
             </div>
           ))}
         </Card>
       )}
-      <p className="px-1 pt-2 text-xs text-slate-400">{t("Reminders are general guidance and don't replace advice from your clinician.")}</p>
+      <p className="px-1 pt-2 text-xs text-ink/40">{t("Reminders are general guidance and don't replace advice from your clinician.")}</p>
       <MarkDoneSheet item={marking} onClose={() => setMarking(null)} />
     </>
   );
@@ -399,8 +399,8 @@ function EventSheet({ open, event, defaultDate, onClose }: { open: boolean; even
       {readOnly ? (
         <div className="space-y-2 text-sm">
           <p>{f.allDay ? `${f.date} · ${t("All day")}` : `${f.date} · ${f.time}`}</p>
-          {f.notes && <p className="text-slate-600">{t(f.notes)}</p>}
-          <p className="text-xs text-slate-500">{event!.source === "appointment" ? t("Added from a confirmed appointment.") : t("Created automatically from your health reminders.")}</p>
+          {f.notes && <p className="text-ink/65">{t(f.notes)}</p>}
+          <p className="text-xs text-ink/55">{event!.source === "appointment" ? t("Added from a confirmed appointment.") : t("Created automatically from your health reminders.")}</p>
         </div>
       ) : (
         <div className="space-y-4">

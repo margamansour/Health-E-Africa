@@ -72,7 +72,7 @@ export function ResultsPage() {
 function ValueCell({ r }: { r: LabResult }) {
   const f = flagFor(r);
   return (
-    <span className={cn("font-semibold", f === "high" || f === "low" ? "text-red-600" : "text-slate-900")}>
+    <span className={cn("font-semibold", f === "high" || f === "low" ? "text-red-600" : "text-ink")}>
       {r.value}
       {f === "high" ? " ↑" : f === "low" ? " ↓" : ""}
     </span>
@@ -99,7 +99,7 @@ function PanelsView({ panels, results }: { panels: LabPanel[]; results: LabResul
             <div className="flex items-start justify-between gap-2 px-4 pt-3">
               <div>
                 <p className="font-semibold">{t(p.name)}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink/55">
                   {fmt.date(p.date)} {p.facilityName && `· ${p.facilityName}`}
                 </p>
               </div>
@@ -116,12 +116,12 @@ function PanelsView({ panels, results }: { panels: LabPanel[]; results: LabResul
             <table className="mt-2 w-full text-sm">
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-slate-100">
-                    <td className="px-4 py-2 text-slate-700">{r.analyte}</td>
+                  <tr key={r.id} className="border-t border-ink/10">
+                    <td className="px-4 py-2 text-ink/80">{r.analyte}</td>
                     <td className="py-2 text-right">
-                      <ValueCell r={r} /> <span className="text-xs text-slate-500">{r.unit}</span>
+                      <ValueCell r={r} /> <span className="text-xs text-ink/55">{r.unit}</span>
                     </td>
-                    <td className="px-4 py-2 text-right text-xs text-slate-400">{range(r)}</td>
+                    <td className="px-4 py-2 text-right text-xs text-ink/40">{range(r)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -141,9 +141,9 @@ function TableView({ results }: { results: LabResult[] }) {
   return (
     <Card className="overflow-x-auto p-0">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-xs text-slate-500">
+        <thead className="bg-cream text-xs text-ink/55">
           <tr>
-            <th className="sticky left-0 bg-slate-50 px-3 py-2 text-left">{t("Test")}</th>
+            <th className="sticky left-0 bg-cream px-3 py-2 text-left">{t("Test")}</th>
             {dates.map((d) => (
               <th key={d} className="whitespace-nowrap px-3 py-2 text-right">
                 {fmt.date(d, { day: "numeric", month: "short", year: "2-digit" })}
@@ -153,13 +153,13 @@ function TableView({ results }: { results: LabResult[] }) {
         </thead>
         <tbody>
           {analytes.map((a) => (
-            <tr key={a} className="border-t border-slate-100">
-              <td className="sticky left-0 whitespace-nowrap bg-white px-3 py-2 text-slate-700">{a}</td>
+            <tr key={a} className="border-t border-ink/10">
+              <td className="sticky left-0 whitespace-nowrap bg-white px-3 py-2 text-ink/80">{a}</td>
               {dates.map((d) => {
                 const r = results.find((x) => x.analyte === a && x.date === d);
                 return (
                   <td key={d} className="px-3 py-2 text-right">
-                    {r ? <ValueCell r={r} /> : <span className="text-slate-300">—</span>}
+                    {r ? <ValueCell r={r} /> : <span className="text-ink/25">—</span>}
                   </td>
                 );
               })}
@@ -204,31 +204,31 @@ function GraphView({ results }: { results: LabResult[] }) {
           <span className="text-2xl font-bold">
             <ValueCell r={last} />
           </span>
-          <span className="text-sm text-slate-500">{last.unit}</span>
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="text-sm text-ink/55">{last.unit}</span>
+          <span className="ml-auto text-xs text-ink/55">
             {t("Normal range")}: {range(last) || "—"}
           </span>
         </div>
       )}
       {series.length < 2 ? (
-        <p className="py-6 text-center text-sm text-slate-500">{t("Add more results for this test to see a trend.")}</p>
+        <p className="py-6 text-center text-sm text-ink/55">{t("Add more results for this test to see a trend.")}</p>
       ) : (
         <div className="h-60">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke="#e2e8f0" vertical={false} />
+              <CartesianGrid stroke="rgba(35,32,47,0.08)" vertical={false} />
               {last && (last.refLow != null || last.refHigh != null) && (
-                <ReferenceArea y1={last.refLow ?? yMin} y2={last.refHigh ?? yMax} fill="#10b981" fillOpacity={0.1} />
+                <ReferenceArea y1={last.refLow ?? yMin} y2={last.refHigh ?? yMax} fill="#c9ebe2" fillOpacity={0.7} />
               )}
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} domain={[yMin, yMax]} ticks={ticks} allowDataOverflow />
               <Tooltip formatter={(v) => [`${v} ${last?.unit ?? ""}`, analyte]} />
-              <Line isAnimationActive={false} type="monotone" dataKey="value" stroke="#0f766e" strokeWidth={2.5} dot={{ r: 4, fill: "#0f766e" }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="value" stroke="#6c5fd8" strokeWidth={3} dot={{ r: 5, fill: "#23202f", stroke: "#fff", strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
-      <p className="text-xs text-slate-400">{t("Green band shows the normal range. Ranges vary between labs.")}</p>
+      <p className="text-xs text-ink/40">{t("Green band shows the normal range. Ranges vary between labs.")}</p>
     </Card>
   );
 }
@@ -375,7 +375,7 @@ function AddResultsSheet({ open, onClose }: { open: boolean; onClose: () => void
               <code className="mt-1 block text-xs">Haemoglobin, 13.2, g/dL, 12-17</code>
             </Notice>
             <Textarea value={text} onChange={(e) => setText(e.target.value)} className="min-h-40 font-mono text-xs" placeholder={"HbA1c, 6.8, %, 4-5.7\nCreatinine, 92, µmol/L, 45-110"} />
-            <p className="text-xs text-slate-500">{t("Reading results from a photo or PDF is coming soon.")}</p>
+            <p className="text-xs text-ink/55">{t("Reading results from a photo or PDF is coming soon.")}</p>
           </>
         )}
 
@@ -391,7 +391,7 @@ function AddResultsSheet({ open, onClose }: { open: boolean; onClose: () => void
             {rows.map((r) => {
               const preview = r.value && !Number.isNaN(Number(r.value)) ? flagFor({ value: Number(r.value), refLow: r.refLow ? Number(r.refLow) : undefined, refHigh: r.refHigh ? Number(r.refHigh) : undefined }) : "unknown";
               return (
-                <div key={r.key} className={cn("space-y-2 rounded-xl p-3 ring-1", preview === "high" || preview === "low" ? "bg-red-50 ring-red-200" : "bg-slate-50 ring-slate-200")}>
+                <div key={r.key} className={cn("space-y-2 rounded-2xl p-3 ring-1", preview === "high" || preview === "low" ? "bg-red-50 ring-red-200" : "bg-cream ring-ink/10")}>
                   <div className="flex gap-2">
                     <Input value={r.analyte} onChange={(e) => update(r.key, { analyte: e.target.value })} placeholder={t("Test name")} aria-label={t("Test name")} />
                     <Button variant="ghost" size="icon" onClick={() => setRows((cur) => cur.filter((x) => x.key !== r.key))} aria-label={t("Remove")}>

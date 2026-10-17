@@ -61,7 +61,7 @@ export function SettingsPage() {
       <PageHeader title={t("Settings")} back />
       <Page>
         <SectionTitle>{t("Notifications")}</SectionTitle>
-        <Card className="divide-y divide-slate-100 py-1">
+        <Card className="divide-y divide-ink/5 py-1">
           {PREFS.map((p) => (
             <Switch key={p.key} checked={prefs[p.key] !== false} onChange={(v) => void updatePref(p.key, v)} label={t(p.label)} description={t(p.description)} />
           ))}
@@ -102,7 +102,7 @@ export function SettingsPage() {
         </Card>
 
         <SectionTitle>{t("Privacy and your data")}</SectionTitle>
-        <Card className="divide-y divide-slate-100 p-0">
+        <Card className="divide-y divide-ink/5 p-0">
           <MenuRow icon={<ShieldCheck className="h-5 w-5" />} label={t("How we protect your data")} onClick={() => setSheet("privacy")} />
           <MenuRow icon={<FileClock className="h-5 w-5" />} label={t("Consents you've given")} onClick={() => setSheet("consents")} />
           <MenuRow icon={<FileClock className="h-5 w-5" />} label={t("Activity log")} onClick={() => setSheet("activity")} />
@@ -111,14 +111,14 @@ export function SettingsPage() {
               <ShieldCheck className="h-5 w-5" />
             </span>
             <span className="flex-1 font-medium">{t("Who I've shared with")}</span>
-            <ChevronRight className="h-4 w-4 text-slate-300" />
+            <ChevronRight className="h-4 w-4 text-ink/25" />
           </Link>
           <MenuRow icon={<Download className="h-5 w-5" />} label={t("Download my data")} onClick={() => void download()} />
         </Card>
 
         <SectionTitle>{t("Account")}</SectionTitle>
         {profile && (
-          <Card className="divide-y divide-slate-100">
+          <Card className="divide-y divide-ink/5">
             <KeyValue label={t("Name")} value={profile.fullName} />
             <KeyValue label={t("Phone")} value={profile.phone} />
             <KeyValue label={t("Member since")} value={fmt.date(profile.createdAt)} />
@@ -133,15 +133,15 @@ export function SettingsPage() {
             <UserX className="h-4 w-4" />
             {t("Close my account")}
           </Button>
-          <Button variant="ghost" className="w-full text-slate-500" onClick={() => setConfirm("reset")}>
+          <Button variant="ghost" className="w-full text-ink/55" onClick={() => setConfirm("reset")}>
             <Trash2 className="h-4 w-4" />
             {t("Demo: clear all data on this device")}
           </Button>
         </div>
-        <p className="px-1 pt-2 text-xs leading-relaxed text-slate-400">
+        <p className="px-1 pt-2 text-xs leading-relaxed text-ink/40">
           {t("Health-e Africa helps you keep and share your health information. It does not give medical advice, diagnose or treat. In an emergency, call 999 or 112, or go to the nearest hospital.")}
         </p>
-        <p className="px-1 text-xs text-slate-400">
+        <p className="px-1 text-xs text-ink/40">
           {t("Version")} 0.1.0 · {t("Privacy notice")} {POLICY_VERSION}
         </p>
       </Page>
@@ -189,7 +189,7 @@ function MenuRow({ icon, label, onClick }: { icon: React.ReactNode; label: strin
     <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm">
       <span className="text-brand-700">{icon}</span>
       <span className="flex-1 font-medium">{label}</span>
-      <ChevronRight className="h-4 w-4 text-slate-300" />
+      <ChevronRight className="h-4 w-4 text-ink/25" />
     </button>
   );
 }
@@ -202,16 +202,16 @@ function ConsentsSheet({ open, onClose }: { open: boolean; onClose: () => void }
   return (
     <Sheet open={open} onClose={onClose} title={t("Consents you've given")}>
       <div className="space-y-3">
-        <p className="text-sm text-slate-600">{t("A record of exactly what you agreed to, and when. To stop a share, use “Who I've shared with”.")}</p>
+        <p className="text-sm text-ink/65">{t("A record of exactly what you agreed to, and when. To stop a share, use “Who I've shared with”.")}</p>
         {consents.map((c) => (
-          <details key={c.id} className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
+          <details key={c.id} className="rounded-2xl bg-cream p-3 ring-1 ring-ink/10">
             <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm">
               <span className="font-medium">{t(PURPOSE[c.purpose] ?? c.purpose)}</span>
               <Badge tone={c.withdrawnAt ? "slate" : c.expiresAt && c.expiresAt < new Date().toISOString() ? "slate" : "green"}>
                 {c.withdrawnAt ? t("Withdrawn") : c.expiresAt && c.expiresAt < new Date().toISOString() ? t("Expired") : t("Active")}
               </Badge>
             </summary>
-            <div className="mt-2 space-y-1 text-xs text-slate-600">
+            <div className="mt-2 space-y-1 text-xs text-ink/65">
               <p>
                 {t("Given")}: {fmt.dateTime(c.grantedAt)} · {t("Version")} {c.policyVersion} · {c.language.toUpperCase()}
               </p>
@@ -265,15 +265,15 @@ function ActivitySheet({ open, onClose }: { open: boolean; onClose: () => void }
   };
   return (
     <Sheet open={open} onClose={onClose} title={t("Activity log")}>
-      <p className="mb-3 text-sm text-slate-600">{t("Every time your health information is added, changed, viewed or shared.")}</p>
-      <ul className="divide-y divide-slate-100 text-sm">
+      <p className="mb-3 text-sm text-ink/65">{t("Every time your health information is added, changed, viewed or shared.")}</p>
+      <ul className="divide-y divide-ink/5 text-sm">
         {entries.map((e) => (
           <li key={e.id} className="flex justify-between gap-3 py-2">
             <span>
               <span className="font-medium">{t(ACTION[e.action] ?? e.action)}</span> · {t(ENTITY[e.entity] ?? e.entity)}
-              {e.actor !== "patient" && <span className="block text-xs text-slate-500">{t("By")}: {e.actor}</span>}
+              {e.actor !== "patient" && <span className="block text-xs text-ink/55">{t("By")}: {e.actor}</span>}
             </span>
-            <span className="shrink-0 text-xs text-slate-400">{fmt.dateTime(e.at)}</span>
+            <span className="shrink-0 text-xs text-ink/40">{fmt.dateTime(e.at)}</span>
           </li>
         ))}
       </ul>
@@ -294,7 +294,7 @@ function PrivacySheet({ open, onClose }: { open: boolean; onClose: () => void })
   ];
   return (
     <Sheet open={open} onClose={onClose} title={t("How we protect your data")}>
-      <ul className="space-y-3 text-sm text-slate-700">
+      <ul className="space-y-3 text-sm text-ink/80">
         {points.map((p) => (
           <li key={p} className="flex gap-2">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
@@ -302,7 +302,7 @@ function PrivacySheet({ open, onClose }: { open: boolean; onClose: () => void })
           </li>
         ))}
       </ul>
-      <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+      <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-xs text-amber-900">
         {t("Demo version: data is saved only in this browser on this device and is not sent anywhere.")}
       </p>
     </Sheet>

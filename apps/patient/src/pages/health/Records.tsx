@@ -57,7 +57,7 @@ export function RecordsPage() {
       />
       <Page>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Search records")} className="pl-9" />
         </div>
         <Chips
@@ -78,17 +78,17 @@ export function RecordsPage() {
             }
           />
         ) : list.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">{t("No records match your search.")}</p>
+          <p className="py-8 text-center text-sm text-ink/55">{t("No records match your search.")}</p>
         ) : (
           list.map((r) => (
             <Card key={r.id} onClick={() => setSelected(r)} className="flex items-start gap-3">
-              <span className="rounded-xl bg-brand-50 p-2.5 text-brand-700">{r.fileType?.startsWith("image/") ? <FileImage className="h-5 w-5" /> : <FileText className="h-5 w-5" />}</span>
+              <span className="rounded-2xl bg-brand-50 p-2.5 text-brand-700">{r.fileType?.startsWith("image/") ? <FileImage className="h-5 w-5" /> : <FileText className="h-5 w-5" />}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium leading-snug">{r.title}</p>
                   {r.source === "facility" && !r.seenAt && <Badge tone="blue">{t("New")}</Badge>}
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-ink/55">
                   {t(CATEGORY_LABELS[r.category])} · {fmt.date(r.date)}
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -161,22 +161,22 @@ function UploadSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-slate-300 p-4 text-sm text-slate-600 hover:border-brand-500">
+          <label className="flex cursor-pointer flex-col items-center gap-1 rounded-2xl border-2 border-dashed border-ink/10 p-4 text-sm text-ink/65 hover:border-brand-500">
             <Camera className="h-6 w-6 text-brand-700" />
             {t("Take photo")}
             <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => pick(e.target.files)} />
           </label>
-          <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-slate-300 p-4 text-sm text-slate-600 hover:border-brand-500">
+          <label className="flex cursor-pointer flex-col items-center gap-1 rounded-2xl border-2 border-dashed border-ink/10 p-4 text-sm text-ink/65 hover:border-brand-500">
             <Upload className="h-6 w-6 text-brand-700" />
             {t("Choose file")}
             <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => pick(e.target.files)} />
           </label>
         </div>
         {file && (
-          <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-sm">
-            <Paperclip className="h-4 w-4 text-slate-500" />
+          <div className="flex items-center gap-2 rounded-2xl bg-cream p-3 text-sm">
+            <Paperclip className="h-4 w-4 text-ink/55" />
             <span className="min-w-0 flex-1 truncate">{file.name}</span>
-            <span className="text-xs text-slate-500">{formatBytes(file.size)}</span>
+            <span className="text-xs text-ink/55">{formatBytes(file.size)}</span>
           </div>
         )}
         <Field label={t("Title")} required>
@@ -246,15 +246,15 @@ function RecordDetail({ record, onClose }: { record: HealthRecord | null; onClos
       }
     >
       <div className="space-y-3">
-        {url && record.fileType?.startsWith("image/") && <img src={url} alt={record.title} className="max-h-80 w-full rounded-xl object-contain ring-1 ring-slate-200" />}
-        <div className="divide-y divide-slate-100">
+        {url && record.fileType?.startsWith("image/") && <img src={url} alt={record.title} className="max-h-80 w-full rounded-2xl object-contain ring-1 ring-ink/10" />}
+        <div className="divide-y divide-ink/5">
           <KeyValue label={t("Type")} value={t(CATEGORY_LABELS[record.category])} />
           <KeyValue label={t("Date")} value={fmt.date(record.date)} />
           <KeyValue label={t("Hospital or clinic")} value={record.facilityName} />
           <KeyValue label={t("Added by")} value={record.source === "facility" ? t("Care provider") : t("You")} />
           {record.fileName && <KeyValue label={t("File")} value={record.fileName} />}
         </div>
-        {record.notes && <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">{record.notes}</p>}
+        {record.notes && <p className="rounded-2xl bg-cream p-3 text-sm text-ink/80">{record.notes}</p>}
       </div>
       <ConfirmDialog
         open={confirm}

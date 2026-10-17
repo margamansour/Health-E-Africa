@@ -77,7 +77,7 @@ export function AppointmentsPage() {
             }
           />
         )}
-        {appts && appts.length > 0 && list.length === 0 && <p className="py-8 text-center text-sm text-slate-500">{t("Nothing here.")}</p>}
+        {appts && appts.length > 0 && list.length === 0 && <p className="py-8 text-center text-sm text-ink/55">{t("Nothing here.")}</p>}
         {list.map((a) => {
           const f = facilities.find((x) => x.id === a.facilityId);
           const st = APPT_STATUS[a.status];
@@ -87,7 +87,7 @@ export function AppointmentsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-semibold">{f?.name ?? t("Facility")}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink/55">
                     {a.service ? t(a.service) : ""} {f && `· ${f.town}`}
                   </p>
                 </div>
@@ -105,12 +105,12 @@ export function AppointmentsPage() {
                     {t("Proposed")}: {fmt.date(a.confirmedStart, { weekday: "short", day: "numeric", month: "short" })}, {fmt.time(a.confirmedStart)}
                   </p>
                 ) : (
-                  <p className="flex items-center gap-2 text-slate-600">
+                  <p className="flex items-center gap-2 text-ink/65">
                     <Clock className="h-4 w-4" />
                     {t("Requested")}: {fmt.date(a.preferredDate, { weekday: "short", day: "numeric", month: "short" })}, {a.preferredTime}
                   </p>
                 )}
-                <p className="text-slate-600">{a.reason}</p>
+                <p className="text-ink/65">{a.reason}</p>
                 {a.shareId && <p className="text-xs text-brand-700">{t("Health summary shared with this facility")}</p>}
               </div>
 
@@ -135,7 +135,7 @@ export function AppointmentsPage() {
                 </Link>
               )}
 
-              <details className="text-xs text-slate-500">
+              <details className="text-xs text-ink/55">
                 <summary className="cursor-pointer">{t("History")}</summary>
                 <ul className="mt-1 space-y-0.5">
                   {a.history.map((h, i) => (
@@ -160,7 +160,7 @@ export function AppointmentsPage() {
 function DemoFacilityActions({ appt }: { appt: Appointment }) {
   const { t } = useTranslation();
   return (
-    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-2.5">
+    <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-2.5">
       <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
         <Wand2 className="h-3.5 w-3.5" />
         {t("Demo: act as the facility")}
@@ -225,7 +225,7 @@ function CancelSheet({ appt, onClose }: { appt: Appointment | null; onClose: () 
           )}
         </Field>
         <Field label={t("Message to the facility (optional)")}>{(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
-        <p className="text-xs text-slate-500">{t("Sharing of your summary with this facility will also stop.")}</p>
+        <p className="text-xs text-ink/55">{t("Sharing of your summary with this facility will also stop.")}</p>
       </div>
     </Sheet>
   );
