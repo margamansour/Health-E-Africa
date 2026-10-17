@@ -1,0 +1,11 @@
+{
+  "name": "health-e-africa",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "npm run dev -w apps/patient",
+    "build": "npm run build -w apps/patient",
+    "test": "npm run test -w apps/patient",
+    "typecheck": "npm run typecheck -w apps/patient"
+  }
+}

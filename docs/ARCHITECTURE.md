@@ -1,7 +1,8 @@
 # Health-e Africa — Architecture & Build Map
 
-Status: **planning** — no code yet. This document maps the product, the
-system, the data, and the build order before we write anything.
+Status: **patient app built as a working demo** (see "Build progress" in §8
+and the README). The data is stored on the device for now; the Kenya-hosted
+backend and Partner Portal come next.
 
 **Launch market: Kenya.** Web app (PWA) first. No existing prototype. No
 pilot partners yet. No dependants at launch. Decisions are recorded in §9.
@@ -432,6 +433,18 @@ Each phase produces something usable on its own.
 
 Phases 1–3 deliver a useful app with **no partners**, so it can be built and
 tested while facilities and pharmacies are being signed up.
+
+### Build progress
+
+| Phase | Status |
+|---|---|
+| 0. Foundation | ✅ App shell, navigation, sheets, toasts, 404, English/Kiswahili, consent ledger, activity log, tests. **Backend not yet:** data is stored on the device (IndexedDB) behind the same data model, until Kenyan hosting is chosen. |
+| 1. Health Passport | ✅ My Bio, Medical Summary, conditions/allergies/medicines, Records upload, Results (table, graph, import with review), Immunisations, Home |
+| 2. Share & Find Care | ✅ Expiring share links with QR code, scoped clinic view, access log, revoke; licensed-only directory with filters and distance (demo facilities) |
+| 3. Calendar & Reminders | ✅ Month, agenda and health-check views; Kenyan rules engine; in-app and browser notifications (no health details shown) |
+| 4. Appointments | ✅ Patient side, plus demo buttons that stand in for the clinic. ⏳ Partner Portal |
+| 5. Prescriptions | ✅ Patient side (repeat/acute, prescription check, allergy warnings, delivery tracking), plus demo buttons for the pharmacy. ⏳ Pharmacy Portal |
+| 6. Hardening | ⏳ Backend, OCR import, Capacitor, offline, SMS/WhatsApp, pen test |
 
 ### Compliance track (runs alongside the build)
 
