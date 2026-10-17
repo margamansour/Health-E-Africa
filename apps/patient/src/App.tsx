@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import iconUrl from "@/assets/icon.svg";
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router";
 
 // Hash-based addresses for hosts that can only serve one page (e.g. the hosted preview).
@@ -29,7 +30,7 @@ const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m
 function Splash() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-brand-700">
-      <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-16 w-16 animate-pulse" />
+      <img src={iconUrl} alt="" className="h-16 w-16 animate-pulse" />
     </div>
   );
 }

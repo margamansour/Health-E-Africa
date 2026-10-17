@@ -34,7 +34,10 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # unit tests (reminder rules, allergy checks, lab parsing, …)
 npm run build      # type-check + production build
+npm run build:offline -w apps/patient   # one self-contained HTML file for demos
 ```
+
+`build:offline` writes `apps/patient/dist-offline/health-e-africa-demo.html`: the whole app (code, styles, font, icon) in one file. It makes no network requests, so it works with no connection, can be hosted anywhere, and can be shared as a demo. Data entered stays on that device.
 
 ## Code layout
 

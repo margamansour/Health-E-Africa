@@ -1,4 +1,5 @@
 import { useState } from "react";
+import iconUrl from "@/assets/icon.svg";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -65,7 +66,7 @@ export function Welcome() {
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col bg-cream">
       <div className="flex items-center justify-between px-5 pt-5">
         <div className="flex items-center gap-2">
-          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-10 w-10 rounded-2xl" />
+          <img src={iconUrl} alt="" className="h-10 w-10 rounded-2xl" />
           <span className="text-lg font-extrabold">Health-e Africa</span>
         </div>
         <div className="flex rounded-full bg-white p-1 text-xs font-bold shadow-[0_2px_12px_-6px_rgba(35,32,47,0.15)]">

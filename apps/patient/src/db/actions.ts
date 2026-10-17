@@ -1,4 +1,5 @@
 import { db, logAudit } from "./db";
+import iconUrl from "@/assets/icon.svg";
 import type {
   Appointment,
   AppointmentStatus,
@@ -87,7 +88,7 @@ export async function notify(n: Omit<AppNotification, "id" | "createdAt">) {
   if (prefs.browser && "Notification" in window && Notification.permission === "granted") {
     try {
       // No health details in system notifications: they show on the lock screen.
-      new Notification("Health-e Africa", { body: genericBody(n.type), icon: `${import.meta.env.BASE_URL}icon.svg` });
+      new Notification("Health-e Africa", { body: genericBody(n.type), icon: iconUrl });
     } catch {
       /* some browsers only allow notifications from a service worker */
     }

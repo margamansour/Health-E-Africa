@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* Bundled font (works offline). See assets/fonts/README.md for the licence. */
+@font-face {
+  font-family: "Urbanist";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./assets/fonts/urbanist-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Urbanist";
+  font-style: italic;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./assets/fonts/urbanist-italic-latin.woff2") format("woff2");
+}
+
 /*
  * Look: soft pastel colour blocks on warm cream, big rounded cards,
  * ink-black pill buttons, chunky rounded type.
