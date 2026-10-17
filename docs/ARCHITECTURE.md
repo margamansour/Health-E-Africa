@@ -103,7 +103,11 @@ docs/
  │   • extract-document (OCR/LLM)              │
  │   • reminder-scheduler (cron)               │
  │   • notify (push / SMS / email)             │
+ │   • esb-adapter (FHIR, later)               │
  └──────────┬──────────────────────┬───────────┘
+            │ (all hosted in Kenya)│
+            │                      └──► National Enterprise Service Bus
+            │                           (Digital Health Agency, Phase 4+)
             │                      │
      ┌──────▼──────┐        ┌──────▼──────────┐
      │ Push / SMS  │        │ OCR / LLM API   │
@@ -134,7 +138,9 @@ donor status, profile-completeness prompt.
 **Care**
 - *Find Care*: directory, filters (location, service, insurance, rating),
   details, share summary, request appointment.
-  ➕ "accepts my insurance" uses the plan saved in My Bio. ➕ verified badge.
+  ➕ "accepts my insurance" uses the plan saved in My Bio.
+  ➕ Only facilities with a verified licence are listed, with a licence badge
+  and "last checked" date (§7.2). ➕ "Report incorrect information" link.
 
 **More**
 - *My Appointments*: list, filters, cancel, confirmed → calendar.
@@ -145,7 +151,9 @@ donor status, profile-completeness prompt.
 - *My Bio*: personal, location, emergency contact, health profile.
   ➕ insurance plan(s), ➕ dependants.
 - *Settings*: notification toggles, privacy, account, logout.
-  ➕ MFA / biometric lock, ➕ data export, ➕ delete account.
+  ➕ MFA / biometric lock, ➕ data export, ➕ manage consents,
+  ➕ close account (records kept for 20 years by law, §7.2), ➕ language
+  (English / Kiswahili).
 - *Notifications*: list, read state, deep links.
 
 ### Partner Portal (new)
@@ -259,7 +267,9 @@ others only through an active share or a linked appointment or prescription*.
 
 **Care network**
 - `facilities`: type (clinic/hospital/lab/pharmacy), name, services[],
-  location, address, contact, hours, rating, verified.
+  location, address, contact, hours, rating, kmhfl_code, licence_body
+  (e.g. KMPDC, PPB), licence_number, licence_expires_at, licence_verified_at,
+  listed (true only while the licence is valid).
 - `facility_insurers`: facility_id, insurer.
 - `facility_staff`: facility_id, user_id, role.
 
@@ -281,8 +291,16 @@ others only through an active share or a linked appointment or prescription*.
   message.
 
 **Platform**
-- `audit_log`: actor, action, entity, entity_id, at. Append-only. Covers
-  every read of clinical data by anyone other than the owner.
+- `audit_log`: actor, actor_role, action, entity, entity_id, at, ip.
+  Append-only. Covers **every** create, read, update and share of health
+  data, by anyone (DHA s.24).
+- `consents`: user_id, purpose, policy_version, wording_hash, language,
+  scope, duration, granted_at, withdrawn_at. Append-only proof of consent.
+- `account_status` on `profiles`: active, closed (closed_at), and
+  `retain_until` = last health-record update + 20 years. A scheduled job
+  purges data only after `retain_until`.
+- `breach_register`, `processors_register`: compliance records (can start
+  as documents).
 
 ---
 
@@ -316,19 +334,66 @@ Nairobi region with iXAfrica is announced but "coming soon"):**
 (CDN) and push notifications that carry **no health data** ("You have a new
 update"). Error tracking must strip personal data, or be self-hosted.
 
-**Registrations and paperwork before launch:**
-- Register as a **data controller and processor with the ODPC** (mandatory for
-  health data).
-- Carry out a **Data Protection Impact Assessment** (required for
-  large-scale sensitive data).
-- Check registration and standards requirements for digital health solutions
-  with the **Digital Health Agency** under the Digital Health Act.
-- Write a privacy notice and consent wording in English and Kiswahili.
-- Have a breach-response plan: notify the ODPC within 72 hours.
+**Legal opinion (external Kenyan counsel, 18 May 2026).** It confirms that
+transferring sensitive data out of Kenya needs **both the patient's consent and
+ODPC approval** (DPA ss.25(h), 48–50). Hosting in Kenya avoids that entirely,
+so the decision stands. The opinion is kept outside this repo. Its other
+findings are in §7.2.
 
-> These findings come from law-firm commentary and official summaries, not a
-> legal opinion. Have a Kenyan data-protection lawyer confirm them before
-> launch.
+### 7.2 Licensing, certification and legal obligations (from the legal opinion)
+
+Health-e Africa is an **"e-Health platform"** under the Digital Health Act and
+a **"digital health solution"** under the 2025 regulations. It must be
+registered and certified under both the Data Protection Act and the Digital
+Health Act.
+
+**Registrations, in order:**
+
+| # | Step | Law | Timing / validity |
+|---|---|---|---|
+| 1 | Register as data **controller and processor** with the ODPC | DPA ss.18–19 | Certificate valid 24 months |
+| 2 | **File the DPIA with the ODPC** | DPA s.31 | **≥ 60 days before processing any real data** |
+| 3 | Notify the **Digital Health Agency (DHA)** of the ODPC registration and the categories of health data held | HIMP Regs reg. 4 | Within **7 days** of ODPC registration |
+| 4 | **Certification as a digital health solution provider**: self-attestation, DHA testing, fix issues → Certificate of Compliance | HIMP Regs regs. 36–40 | Before going live |
+| 5 | **Onboard to the national Enterprise Service Bus (ESB)** for provider discovery and data exchange. Needs the Certificate of Compliance; DHA decides within 14 days | Data Exchange Regs reg. 5 | Licence valid **1 year** |
+| 6 | Appoint a **Data Protection Officer** | DPA s.24 | Before launch |
+
+**Documents the certification requires.** Several of them come straight out
+of the engineering work, so we produce them as we build:
+
+| Document | Who produces it | Where it comes from |
+|---|---|---|
+| System manual and requirements specification | Engineering | This doc, plus `docs/system-manual.md` kept up to date per phase |
+| DPIA report | DPO / lawyer, with engineering input | Data model (§6), data-flow diagram, list of processors |
+| Security, privacy and confidentiality policy | DPO / lawyer | Controls in §7.3 |
+| System backup and recovery policy | Engineering | Backup design (§7.3) plus a tested restore |
+| Cyber security assessment report | External pen tester | Pen test before certification |
+| Certificate of incorporation, controller particulars, fees | Founder | — |
+
+**Obligations that change the product design:**
+
+| Obligation | Source | Design impact |
+|---|---|---|
+| **Keep health records for at least 20 years** after the last update (living patients). If the business stops, archive to the County Health Data Bank | HIMP Regs reg. 15 | **No hard-delete of health records.** "Delete account" becomes **"Close account"**: sign-in disabled, sharing revoked, records archived (encrypted, access-restricted) until the retention date. Non-health data (marketing preferences, push tokens) is deleted. Explain this clearly in the privacy notice. |
+| Consent must be **express, specific, written**, stating duration, regions and use. **We carry the burden of proof.** Can be withdrawn at any time | DPA ss.2, 30(3), 32 | A **`consents` ledger**: the exact versioned wording shown, the language, timestamp, scope, duration and withdrawal time. Separate consents for: account processing, each share, reminders, any later research or analytics. Nothing pre-ticked. |
+| **No commercial use** of personal data without consent; anonymise if used | DPA s.37 | No ads. No third-party analytics on health screens. Any stats are aggregated and anonymised. |
+| **Audit trails for all activities**, role-based rights, personal logins, encrypted backups | DHA s.24, s.33 | `audit_log` covers **every** create, read, update and share of health data, by anyone, including the patient and our admins. |
+| Breach: tell the **DHA CEO within 48 h**, the **ODPC within 72 h**, and affected patients in writing | HIMP Regs reg. 11; DPA | Incident runbook, alerting, and a breach register. The 48-hour DHA clock is the tighter one. |
+| **Written processor agreements** with every third party that touches personal data | DPA s.42 | Hosting provider, SMS provider, email and push providers. Keep a register of processors. |
+| **Record of processing activities** | Opinion's recommendations | Kept with the DPIA and updated each phase |
+| **Annual DHA audits**; follow the Cabinet Secretary's data-quality protocols | HIMP Regs reg. 42 | Data-quality checks (required fields, valid units and codes) built into forms and imports |
+| Possible future duty to send data to **national and county health data banks** | DHA s.45 | Keep data mappable to FHIR so an export is straightforward. Don't build it until it's required. |
+
+**Provider-discovery risks (Find Care):**
+- **Implied endorsement.** If we list an unlicensed pharmacy, the user could
+  sue us. **Only list facilities with a verified, current licence**, and show
+  the licence status and when it was last checked.
+- **Accuracy.** Location, services and licence data must be refreshed
+  regularly. Show a "report incorrect information" link.
+- Facilities offering e-health must themselves be licensed (DHA s.41(2)). Check
+  this when onboarding partners.
+
+### 7.3 General controls
 
 ### 7.2 General controls
 - **Access control:** Postgres RLS on every table. Partner staff see data only
@@ -338,9 +403,12 @@ update"). Error tracking must strip personal data, or be self-hosted.
   "You have a new result" rather than the result itself).
 - **Auth:** phone OTP plus email; optional MFA; biometric app lock in the
   native build; session timeout.
-- **Consent & audit:** every share and every view is logged and visible to the
-  patient.
-- **Patient rights:** export all data (JSON + PDFs) and delete the account.
+- **Consent & audit:** every action on health data is logged. Shares and
+  views by others are shown to the patient.
+- **Patient rights:** access, export (JSON + PDFs), correct, object, withdraw
+  consent, and close the account. Records are kept for 20 years (§7.2).
+- **Backups:** encrypted, stored in Kenya, with a restore tested quarterly.
+  This is required for the backup and recovery policy.
 - **AI extraction:** process without storing data at the provider; the user
   confirms values before saving; never auto-diagnose.
 - **Clinical safety:** allergy warnings and reminders are *decision support*.
@@ -354,7 +422,7 @@ Each phase produces something usable on its own.
 
 | Phase | Scope | Needs partners? |
 |---|---|---|
-| **0. Foundation** | Monorepo, Supabase project, auth (phone/email), app shell, 4-tab nav, sheets, toasts, 404, design system, CI | No |
+| **0. Foundation** | Monorepo, self-hosted Supabase (local dev first, Kenyan host later), auth (phone/email), consent ledger, audit log, English/Kiswahili translations, app shell, 4-tab nav, sheets, toasts, 404, design system, CI | No |
 | **1. Health Passport (MVP)** | My Bio, Medical Summary (view), Diagnoses/Allergies/Medications CRUD, Records upload & browse, Labs (manual entry, table/graph), Immunisations, Home dashboard | No |
 | **2. Share & Find Care** | Facility directory (seeded), filters incl. insurance & distance, summary sharing via expiring link, access log, revoke | No (link-based) |
 | **3. Calendar & Reminders** | Calendar, notifications centre, push, reminder rules engine (1 launch country first) | No |
@@ -363,7 +431,27 @@ Each phase produces something usable on its own.
 | **6. Smart import & hardening** | OCR/LLM lab import, Capacitor native apps, offline cache, SMS/WhatsApp, data export, security review / pen test | — |
 
 Phases 1–3 deliver a useful app with **no partners**, so it can be built and
-tested with real users while facilities and pharmacies are being signed up.
+tested while facilities and pharmacies are being signed up.
+
+### Compliance track (runs alongside the build)
+
+**No real patient data until the gates below are passed.** Until then,
+development and testing use made-up data only.
+
+| When | Compliance step | Engineering hand-off |
+|---|---|---|
+| Phase 0 | Incorporate the company, appoint a DPO, engage counsel | Data-flow diagram, list of processors |
+| End of Phase 1 | **Register with the ODPC**, then **notify the DHA within 7 days** | System manual v1 |
+| End of Phase 1 | **File the DPIA** → starts the **60-day clock** | Data model, security controls, consent design |
+| Phases 2–3 | Policies: privacy, security, backup and recovery, incident response | Backup + tested restore, alerting |
+| End of Phase 3 | External **pen test** → cyber security assessment report | Fix findings |
+| End of Phase 3 | **DHA certification** (self-attestation, testing) → Certificate of Compliance | Fix issues from the DHA test report |
+| **Gate: pilot launch with real users** | DPIA 60 days elapsed + DHA certificate | — |
+| Before Phase 4 | **ESB onboarding** (needs the certificate) → licence + API access | Build the ESB/FHIR adapter |
+| Yearly | Renew the ESB licence (1 year) and ODPC registration (2 years); DHA audit | Audit reports |
+
+Filing the DPIA at the end of Phase 1 means the 60-day wait runs while
+Phases 2–3 are built, so it doesn't delay the launch.
 
 ---
 
@@ -378,14 +466,18 @@ tested with real users while facilities and pharmacies are being signed up.
 | 5 | Pilot partners | **None yet.** Build Phases 0–3 (no partners needed) while recruiting clinics and a pharmacy |
 | 6 | Who handles prescriptions | **The pharmacist** processes them, but POMs need a valid prescription from a registered prescriber (§5.4) |
 | 7 | Dependants at launch | **No.** Keep the data model ready for it later |
+| 8 | Languages | **English + Kiswahili** from launch. All text goes through translation files from Phase 0 |
+| 9 | Data storage | **In Kenya**, confirmed by external legal opinion (18 May 2026). Records kept 20 years; "close account" rather than delete (§7.2) |
 
 ### Still open
-- **Languages:** English + Kiswahili at launch? (Recommended.)
-- **Which Kenyan hosting provider:** get quotes from 2–3 providers.
-- **Legal review:** engage a Kenyan data-protection / health lawyer before
-  real patient data goes in (ODPC registration, DPIA, pharmacy flow).
-- **Business name and entity:** ODPC registration needs a registered
-  controller.
+- **Which Kenyan hosting provider:** get quotes from 2–3 providers. They
+  must sign a processor agreement and support encrypted backups in Kenya.
+- **Pharmacy flow:** the legal opinion doesn't cover prescriptions. Ask
+  counsel to confirm the §5.4 flow against PPB rules before Phase 5.
+- **Business name and entity:** ODPC registration and DHA certification need
+  a certificate of incorporation.
+- **DPO:** in-house or outsourced (counsel offered to help with registration
+  and documents).
 
 ### Sources
 - [Digital Health Act 2023 — Kenya Law](https://new.kenyalaw.org/akn/ke/act/2023/15/eng@2023-11-24)
