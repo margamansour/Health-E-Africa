@@ -49,5 +49,6 @@ export function shareState(s: Pick<SummaryShare, "expiresAt" | "revokedAt">, now
 }
 
 export function shareUrl(token: string): string {
+  if (import.meta.env.VITE_HASH_ROUTER === "1") return `${window.location.href.split("#")[0]}#/s/${token}`;
   return `${window.location.origin}/s/${token}`;
 }

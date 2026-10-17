@@ -85,7 +85,7 @@ export function SharedSummaryPage() {
     <div className="min-h-dvh bg-slate-100">
       <header className="bg-brand-800 px-4 py-3 text-white">
         <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <img src="/icon.svg" alt="" className="h-7 w-7 rounded-lg" />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-7 w-7 rounded-lg" />
           <span className="font-semibold">Health-e Africa</span>
           <span className="ml-auto inline-flex items-center gap-1 text-xs text-brand-100">
             <ShieldCheck className="h-4 w-4" />

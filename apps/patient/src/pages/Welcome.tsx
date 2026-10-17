@@ -53,6 +53,8 @@ export function Welcome() {
       if (sample) await loadSampleHealthData();
       await syncReminders();
       navigate("/", { replace: true });
+      // Signing in last means the app only opens once everything is ready.
+      await signIn();
       toast.success(t("Your health passport is ready"));
     } finally {
       setBusy(false);
@@ -64,7 +66,7 @@ export function Welcome() {
       <div className="bg-gradient-to-br from-brand-700 to-brand-900 px-6 pb-10 pt-10 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl ring-2 ring-white/30" />
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9 rounded-xl ring-2 ring-white/30" />
             <span className="text-lg font-bold">Health-e Africa</span>
           </div>
           <div className="flex rounded-full bg-white/15 p-0.5 text-xs">

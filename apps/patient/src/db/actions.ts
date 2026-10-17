@@ -37,8 +37,6 @@ export async function recordConsent(c: Omit<Consent, "id" | "grantedAt" | "polic
 export async function createAccount(profile: Omit<Profile, "id" | "createdAt" | "status" | "insurance">, consentWording: string, language: string) {
   await db.profile.put({ ...profile, id: "me", insurance: [], createdAt: nowIso(), status: "active" });
   await recordConsent({ purpose: "account", language, wording: consentWording, scope: "Store and organise my health information in this app" });
-  await setSetting("signedIn", true);
-  await logAudit({ action: "login", entity: "session" });
   await notify({ type: "system", title: "Welcome to Health-e Africa", body: "Your health passport is ready. Start by adding your allergies and medicines.", link: "/bio", key: "welcome" });
 }
 
@@ -89,7 +87,7 @@ export async function notify(n: Omit<AppNotification, "id" | "createdAt">) {
   if (prefs.browser && "Notification" in window && Notification.permission === "granted") {
     try {
       // No health details in system notifications: they show on the lock screen.
-      new Notification("Health-e Africa", { body: genericBody(n.type), icon: "/icon.svg" });
+      new Notification("Health-e Africa", { body: genericBody(n.type), icon: `${import.meta.env.BASE_URL}icon.svg` });
     } catch {
       /* some browsers only allow notifications from a service worker */
     }

@@ -243,7 +243,7 @@ export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClo
               <Copy className="h-4 w-4" />
             </Button>
           </div>
-          <a href={`/s/${result.token}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700">
+          <a href={shareUrl(result.token)} target={import.meta.env.VITE_HASH_ROUTER === "1" ? undefined : "_blank"} rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700">
             <ExternalLink className="h-4 w-4" />
             {t("Preview what they will see")}
           </a>

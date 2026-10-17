@@ -1,5 +1,8 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router";
+
+// Hash-based addresses for hosts that can only serve one page (e.g. the hosted preview).
+const Router = import.meta.env.VITE_HASH_ROUTER === "1" ? HashRouter : BrowserRouter;
 import { Toaster } from "sonner";
 import { AppShell } from "@/components/layout";
 import { useSession } from "@/lib/hooks";
@@ -26,7 +29,7 @@ const NotFound = lazy(() => import("@/pages/NotFound").then((m) => ({ default: m
 function Splash() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-brand-700">
-      <img src="/icon.svg" alt="" className="h-16 w-16 animate-pulse" />
+      <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-16 w-16 animate-pulse" />
     </div>
   );
 }
@@ -73,7 +76,7 @@ function Gate() {
 
 export function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         {/* What a facility sees when it opens a shared link. Doesn't need the patient to be signed in. */}
         <Route
@@ -87,6 +90,6 @@ export function App() {
         <Route path="*" element={<Gate />} />
       </Routes>
       <Toaster position="top-center" richColors closeButton />
-    </BrowserRouter>
+    </Router>
   );
 }
