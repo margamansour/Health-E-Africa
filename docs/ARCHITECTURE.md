@@ -3,6 +3,9 @@
 Status: **planning** — no code yet. This document maps the product, the
 system, the data, and the build order before we write anything.
 
+**Launch market: Kenya.** Web app (PWA) first. No existing prototype. No
+pilot partners yet. No dependants at launch. Decisions are recorded in §9.
+
 ---
 
 ## 1. What the product is
@@ -51,12 +54,13 @@ markets, and health-data compliance.
 | Patient app | **React + TypeScript + Vite**, Tailwind, shadcn/ui, installable **PWA** | Matches the component list (sheets, toasts, dialogs). One codebase for web and mobile. |
 | Native wrapper (later) | **Capacitor** | Adds reliable push, camera and biometrics, and app-store presence, without a rewrite. |
 | Partner Portal | Same React stack, separate app in the same repo | Shares types, UI kit and API client. |
-| Backend | **Supabase**: Postgres, Auth, Storage, Edge Functions, Row-Level Security | Managed, and access rules live in the database. Can be self-hosted later for data residency. |
+| Backend | **Supabase, self-hosted in a Kenyan data centre**: Postgres, Auth, Storage, Edge Functions, Row-Level Security | Access rules live in the database. Supabase's hosted cloud has no Kenyan region, and no major cloud (AWS, Azure, Google) has a full region in Kenya yet. So we run the open-source Supabase stack ourselves on Kenyan infrastructure. See §7.1. |
 | Server state | TanStack Query | Caching, retries, offline-friendly. |
 | Forms / validation | react-hook-form + **zod** (schemas shared with the backend) | One source of truth for validation. |
 | Push notifications | Web Push (PWA), then FCM/APNs via Capacitor | |
 | SMS / WhatsApp fallback | Africa's Talking or Twilio | Many users have patchy data or turn notifications off. |
-| Document text extraction | OCR plus LLM extraction, **always reviewed by the user** before saving | Powers "import lab results" from a photo or PDF. |
+| Document text extraction | OCR plus LLM extraction, **always reviewed by the user** before saving | Powers "import lab results" from a photo or PDF. ⚠️ Most OCR and AI services run outside Kenya. Use a self-hosted OCR model in Kenya, or get explicit consent and cross-border safeguards first (§7.1). |
+| Kenya specifics | M-Pesa (Daraja API) for payments; **SHA** (Social Health Authority, replaced NHIF in 2024) plus private insurers in the insurance list; facility directory seeded from the **Kenya Master Health Facility List**; **KEPI** vaccine schedule; English + Kiswahili | |
 | Maps / distance | PostGIS in Postgres, with a map tile provider | Distance filtering in SQL. |
 | Payments (later) | Mobile money (M-Pesa, MTN MoMo), Flutterwave or Paystack | For delivery fees and co-pays. |
 | Health data standard | Map internal tables to **FHIR R4** at the edges | Needed to exchange data with hospitals and labs later. |
@@ -201,11 +205,24 @@ patient selects repeat items (or describes acute need)
   → APPROVED → DISPENSED → OUT_FOR_DELIVERY → DELIVERED
                          ↘ REJECTED (reason shown to patient)
 ```
-> ⚠️ **Regulatory:** in most African jurisdictions a pharmacist cannot issue
-> prescription-only medicines without a valid prescription. Repeat requests
-> need a prescriber in the loop, or a valid existing prescription on file.
-> Acute requests will often need a consultation. **Confirm per launch country
-> before building this flow.**
+> ⚠️ **Regulatory (Kenya):** under the Pharmacy and Poisons Board's Good
+> Pharmacy Practice guidelines, prescription-only medicines (POMs) may only be
+> dispensed against a **valid prescription** from a registered prescriber. So
+> the pharmacist **processes** the request but can't **create** the
+> prescription. The flow therefore works like this:
+> - **Repeat request:** the patient attaches (or already has on file) the
+>   original prescription. The pharmacist checks it is valid and has repeats
+>   left, then dispenses. If it isn't valid → `AWAITING_PRESCRIBER` or
+>   `REJECTED`.
+> - **Acute request:** the pharmacist can supply over-the-counter and
+>   pharmacy-only medicines after a consultation (chat or call). POMs need a
+>   prescriber, so later on we'd add a telehealth partner.
+> - **The pharmacy partner** must be PPB-licensed and, for online ordering,
+>   registered under the PPB **Internet Pharmacy guidelines**: it shows the
+>   PPB health safety code and has a pharmacist available for consultation.
+>   The app must **not promote or advertise POMs**.
+> - The PPB has **draft digital pharmacy guidelines** in progress. Get a
+>   Kenyan health lawyer or the PPB to confirm this flow before Phase 5.
 
 ### 5.5 Preventive-care reminders
 - `reminder_rules` table per country: condition / age range / sex / interval
@@ -273,11 +290,47 @@ others only through an active share or a linked appointment or prescription*.
 
 Health data is the most sensitive category under every relevant law.
 
-- **Laws to plan for:** Nigeria NDPA 2023, Kenya Data Protection Act 2019
-  (and Digital Health Act 2023), South Africa POPIA, Ghana Data Protection Act
-  2012, Rwanda DPP Law 2021. Most require registration with the regulator,
-  explicit consent for health data, breach notification, and some impose
-  **data-localisation** rules. Choose the hosting region per launch country.
+### 7.1 Kenya: where data must live, and what to register
+
+**Short answer: yes, host it in Kenya.** Health data is covered by two
+overlapping localisation rules:
+
+| Law | What it says | What it means for us |
+|---|---|---|
+| **Data Protection Act 2019, s.50 + Data Protection (General) Regulations 2021, reg. 26** | Processing for "strategic interests of the state", which **includes primary and secondary health care**, must run on a server and data centre in Kenya, or keep at least one serving copy in a Kenyan data centre. | The database, file storage and backups go in Kenya. |
+| **Digital Health Act 2023** (+ 2025 Health Information Management and Data Exchange regulations) | Health data is to be stored in Kenya. Transfers abroad are allowed only under prescribed conditions (e.g. health tourism) with safeguards. | Don't send records abroad by default, including to overseas AI, OCR, email or analytics services. |
+| **DPA 2019 (health = "sensitive data")** | Cross-border transfer needs consent plus adequate safeguards. The ODPC issued a cross-border transfer guidance note in 2026, with its own standard clauses. | Any foreign service that touches personal data needs a transfer assessment. |
+
+In 2025 a Kenyan court found that a foreign health-data arrangement breached
+the DPA and ordered the data deleted. These rules are enforced.
+
+**Hosting options (no major cloud has a full Kenyan region yet; Oracle's
+Nairobi region with iXAfrica is announced but "coming soon"):**
+- Kenyan cloud / VPS providers (e.g. Safaricom Cloud, Liquid / Africa Data
+  Centres, local providers such as Lineserve) running self-hosted Supabase in
+  Docker. **Recommended to start.**
+- Colocation (iXAfrica, Digital Realty NBO1/NBO2) when we outgrow that.
+- Revisit Oracle, AWS or Azure Kenyan regions when they launch.
+
+**What stays outside Kenya, and why that's OK:** the web app's static code
+(CDN) and push notifications that carry **no health data** ("You have a new
+update"). Error tracking must strip personal data, or be self-hosted.
+
+**Registrations and paperwork before launch:**
+- Register as a **data controller and processor with the ODPC** (mandatory for
+  health data).
+- Carry out a **Data Protection Impact Assessment** (required for
+  large-scale sensitive data).
+- Check registration and standards requirements for digital health solutions
+  with the **Digital Health Agency** under the Digital Health Act.
+- Write a privacy notice and consent wording in English and Kiswahili.
+- Have a breach-response plan: notify the ODPC within 72 hours.
+
+> These findings come from law-firm commentary and official summaries, not a
+> legal opinion. Have a Kenyan data-protection lawyer confirm them before
+> launch.
+
+### 7.2 General controls
 - **Access control:** Postgres RLS on every table. Partner staff see data only
   through an active share. No broad "doctor can see everything" role.
 - **Encryption:** TLS everywhere; encrypted at rest; private Storage buckets
@@ -314,22 +367,37 @@ tested with real users while facilities and pharmacies are being signed up.
 
 ---
 
-## 9. Decisions needed before building
+## 9. Decisions
 
-1. **Launch country (or countries)?** This sets the compliance regime,
-   hosting region, screening and vaccine rules, and the insurer list.
-2. **Web/PWA first, or native app stores from day one?** (Recommended:
-   PWA first, then wrap with Capacitor in Phase 6.)
-3. **Backend: Supabase OK?** (Or do you need a specific cloud or region for
-   data residency?)
-4. **Is there an existing prototype** (for example from Lovable or Figma)
-   whose code or designs we should start from? The feature breakdown reads
-   like one.
-5. **Partners:** are any clinics or pharmacies lined up for a pilot? This sets
-   when Phases 4–5 can start.
-6. **Prescriptions:** who authorises repeats in your launch market: the
-   pharmacist, the patient's own doctor, or a telehealth prescriber you
-   partner with?
-7. **Dependants:** should one account manage family members' records at
-   launch?
-8. **Languages:** English only at first, or also French, Swahili, etc.?
+| # | Question | Decision |
+|---|---|---|
+| 1 | Launch country | **Kenya** |
+| 2 | Web or native first | **Web app (PWA)** first; Capacitor native apps in Phase 6 |
+| 3 | Backend and hosting | **Self-hosted Supabase in a Kenyan data centre** (§7.1) |
+| 4 | Existing prototype | **None.** Build from scratch, starting with a design pass in Phase 0 |
+| 5 | Pilot partners | **None yet.** Build Phases 0–3 (no partners needed) while recruiting clinics and a pharmacy |
+| 6 | Who handles prescriptions | **The pharmacist** processes them, but POMs need a valid prescription from a registered prescriber (§5.4) |
+| 7 | Dependants at launch | **No.** Keep the data model ready for it later |
+
+### Still open
+- **Languages:** English + Kiswahili at launch? (Recommended.)
+- **Which Kenyan hosting provider:** get quotes from 2–3 providers.
+- **Legal review:** engage a Kenyan data-protection / health lawyer before
+  real patient data goes in (ODPC registration, DPIA, pharmacy flow).
+- **Business name and entity:** ODPC registration needs a registered
+  controller.
+
+### Sources
+- [Digital Health Act 2023 — Kenya Law](https://new.kenyalaw.org/akn/ke/act/2023/15/eng@2023-11-24)
+- [Digital Health (Health Information Management Procedures) Regulations 2025](https://new.kenyalaw.org/akn/ke/act/ln/2025/76/eng@2025-04-11)
+- [Digital Health (Data Exchange Component) Regulations 2025](https://new.kenyalaw.org/akn/ke/act/ln/2025/77/eng@2025-04-11)
+- [Data Protection (General) Regulations 2021 — ODPC](https://www.odpc.go.ke/wp-content/uploads/2024/03/THE-DATA-PROTECTION-GENERAL-REGULATIONS-2021-1.pdf)
+- [ODPC Guidance Note on Cross-border Data Transfers](https://www.odpc.go.ke/wp-content/uploads/2026/04/Guidance-Note-on-Cross-border-Data-Transfers.pdf)
+- [Oraro & Co — Reflections on the 2021 Regulations](https://www.oraro.co.ke/open-sesame-reflections-on-the-data-protection-general-regulations-2021/)
+- [Carnegie — Kenya's health deal and data protection](https://carnegieendowment.org/research/2026/03/kenya-data-protection-america-first-global-health-strategy)
+- [CIPESA — Kenya's Digital Health Act and data governance](https://cipesa.org/2024/05/does-kenyas-digital-health-act-mark-a-new-era-for-data-governance-and-regulation/)
+- [PPB — Pharmacy practice guidelines](https://web.pharmacyboardkenya.org/pharmacy-practice-guidelines/)
+- [PPB — Guidelines for Internet Pharmacy Services](https://web.pharmacyboardkenya.org/download/guidelines-on-internet-pharmacy-services/)
+- [LSHTM — Online pharmacy in Kenya: regulatory requirements](https://www.lshtm.ac.uk/media/90626)
+- [DCD — iXAfrica to host Oracle cloud region in Nairobi](https://www.datacenterdynamics.com/en/news/ixafrica-to-host-oracle-cloud-region-in-nairobi-kenya/)
+- [Lineserve — Data centres in Kenya (2026)](https://www.lineserve.net/blog/datacenters-in-kenya)
