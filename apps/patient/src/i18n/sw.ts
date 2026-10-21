@@ -903,4 +903,5 @@ export const sw: Record<string, string> = {
   "The highlighted line is where this appears.": "Mstari ulioangaziwa ndipo hii inapoonekana.",
   "We couldn't pinpoint the line, but it is in this document.": "Hatukuweza kubainisha mstari, lakini iko katika hati hii.",
   "Close-up of the item in the document": "Picha ya karibu ya kipengee katika hati",
+  "{{n}} request(s) in progress": "Maombi {{n}} yanaendelea",
 };

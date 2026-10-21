@@ -8,7 +8,9 @@ import { Card, type CardTone } from "@/components/ui";
 import { Page } from "@/components/layout";
 import { active, useFormat, useProfile } from "@/lib/hooks";
 import { cn, initials } from "@/lib/utils";
-import type { Profile } from "@/db/types";
+import type { MedRequestStatus, Profile } from "@/db/types";
+
+const OPEN_REQUEST_STATES: MedRequestStatus[] = ["submitted", "awaiting_prescriber", "approved", "dispensed", "out_for_delivery"];
 
 function completeness(p: Profile, counts: { allergies: number; meds: number; conditions: number }) {
   const checks = [
@@ -59,6 +61,8 @@ export function HomePage() {
       unseen,
     };
   }, []);
+  // Prescription requests still in progress at the pharmacy, shown on the Prescriptions button.
+  const openRequests = useLiveQuery(() => db.medRequests.filter((r) => OPEN_REQUEST_STATES.includes(r.status)).count(), [], 0);
 
   if (!profile || !data) return null;
   const pct = completeness(profile, { allergies: data.allergies.length, meds: data.meds.length, conditions: data.conditions.length });
@@ -97,8 +101,9 @@ export function HomePage() {
       {/* Quick action pills */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[
+          // One upload covers letters, prescriptions and lab results (they're filed automatically).
           { to: "/records?add=1", icon: FilePlus2, label: "Upload record", dark: true },
-          { to: "/results?add=1", icon: FlaskConical, label: "Add result" },
+          { to: "/prescriptions", icon: Pill, label: "Prescriptions", count: openRequests },
           { to: "/summary", icon: ClipboardList, label: "My summary" },
           { to: "/find-care", icon: Search, label: "Find care" },
         ].map((q) => (
@@ -114,6 +119,11 @@ export function HomePage() {
               <q.icon className="h-4 w-4" />
             </span>
             {t(q.label)}
+            {!!q.count && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-[11px] font-bold text-ink" aria-label={t("{{n}} request(s) in progress", { n: q.count })}>
+                {q.count}
+              </span>
+            )}
           </Link>
         ))}
       </div>

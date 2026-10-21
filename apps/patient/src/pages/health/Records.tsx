@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Activity, AlertTriangle, ScanText, FileImage, FileText, FlaskConical, Inbox, Paperclip, Pill, Plus, Search, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
 import type { HealthRecord, RecordCategory } from "@/db/types";
@@ -19,6 +19,7 @@ export function RecordsPage() {
   const { t } = useTranslation();
   const fmt = useFormat();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const all = active(useLiveQuery(() => db.records.orderBy("date").reverse().toArray(), []));
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<"all" | RecordCategory>("all");
@@ -118,6 +119,7 @@ export function RecordsPage() {
           setRescan(null);
           setParams({}, { replace: true });
         }}
+        onManual={rescan ? undefined : () => navigate("/results?manual=1", { replace: true })}
       />
       <RecordDetail
         record={selected}
