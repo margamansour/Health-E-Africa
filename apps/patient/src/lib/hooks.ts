@@ -1,7 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { db } from "@/db/db";
-import type { Archivable } from "@/db/types";
+import type { Archivable, FromDocument, HealthRecord } from "@/db/types";
+import { provenanceOf } from "@/domain/provenance";
 
 export function useProfile() {
   return useLiveQuery(() => db.profile.get("me"), [], null);
@@ -58,4 +59,10 @@ export function useVerifiedRecordIds() {
     [],
     new Set<string>(),
   );
+}
+
+/** Where each item came from (document, clinic or typed in), looked up from the saved records. */
+export function useProvenance() {
+  const records = useLiveQuery(async () => new Map((await db.records.toArray()).map((r) => [r.id, r])), [], new Map<string, HealthRecord>());
+  return (item: FromDocument) => provenanceOf(item, records);
 }

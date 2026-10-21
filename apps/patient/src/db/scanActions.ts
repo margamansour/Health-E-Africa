@@ -98,7 +98,7 @@ export async function saveScannedRecord(input: {
       const existing = (await db.medications.toArray()).find((y) => !y.archivedAt && same(y.name, m.name) && y.status === "active");
       if (existing) {
         if (ex.medicationChange(m) === "same") continue;
-        await db.medications.update(existing.id, { dose: m.dose, frequency: m.frequency || existing.frequency, status: m.status, sourceRecordId: recordId });
+        await db.medications.update(existing.id, { dose: m.dose, frequency: m.frequency || existing.frequency, status: m.status, sourceRecordId: recordId, sourceFacility: undefined, editedAt: undefined });
       } else {
         await db.medications.add({
           id: uid(),

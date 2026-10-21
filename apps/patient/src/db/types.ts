@@ -11,9 +11,14 @@ export interface Archivable {
   archivedAt?: string;
 }
 
-/** Items added from a scanned document keep a link back to it. */
+/** Where an item came from: a scanned document, a clinic sending it through the app, or typed in. */
 export interface FromDocument {
+  /** The uploaded document (or clinic record) it was taken from. */
   sourceRecordId?: ID;
+  /** Sent directly by this clinic through the app, with no document. */
+  sourceFacility?: string;
+  /** Set when the patient changes an item that came from a document or clinic. */
+  editedAt?: string;
 }
 
 export interface InsurancePlan {

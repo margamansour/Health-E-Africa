@@ -10,9 +10,9 @@ import type { LabPanel, LabResult } from "@/db/types";
 import { Button, Card, EmptyState, Field, Input, Notice, Select, Sheet, Tabs, Textarea } from "@/components/ui";
 import { Page, PageHeader } from "@/components/layout";
 import { analyteOrder, flagFor, formatValue, LAB_GROUPS, labGroupFor, PANEL_TEMPLATES, parseResultsText, type ParsedRow } from "@/domain/labs";
-import { active, useFormat, useVerifiedRecordIds } from "@/lib/hooks";
+import { active, useFormat } from "@/lib/hooks";
 import { ScanUploadSheet } from "@/components/ScanUploadSheet";
-import { SourceDocumentSheet } from "@/components/SourceDocumentSheet";
+import { SourceDocumentSheet, useLabProvenance } from "@/components/SourceDocumentSheet";
 import { cn, nowIso, today, uid } from "@/lib/utils";
 import { normUnit, standardUnit } from "@/domain/units";
 
@@ -121,7 +121,7 @@ function GroupedTable({
 }) {
   const { t } = useTranslation();
   const fmt = useFormat();
-  const verifiedIds = useVerifiedRecordIds();
+  const labProvenance = useLabProvenance();
   const [closed, setClosed] = useState<Set<string>>(new Set());
 
   const groups = useMemo(() => {
@@ -207,7 +207,6 @@ function GroupedTable({
                           </td>
                           {g.dates.map((d) => {
                             const r = g.rows.find((x) => keyOf(x) === a && x.date === d);
-                            const src = r ? panelById.get(r.panelId)?.sourceRecordId : undefined;
                             return (
                               <td key={d} className="whitespace-nowrap px-3 py-2 text-right">
                                 {r ? (
@@ -218,7 +217,7 @@ function GroupedTable({
                                     className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-4"
                                   >
                                     <ValueCell r={r} />
-                                    {src && verifiedIds.has(src) && <BadgeCheck className="h-3 w-3 text-emerald-600" />}
+                                    {r && labProvenance(panelById.get(r.panelId)).verified && <BadgeCheck className="h-3 w-3 text-emerald-600" />}
                                   </button>
                                 ) : (
                                   <span className="text-ink/25">—</span>

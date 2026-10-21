@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { toast } from "sonner";
 import { AlertTriangle } from "lucide-react";
 import { db } from "@/db/db";
+import { markEdited } from "@/domain/provenance";
 import type { Allergy, Condition, Medication, Severity } from "@/db/types";
 import { Button, Checkbox, ConfirmDialog, Field, Input, Notice, Select, Sheet, Textarea } from "./ui";
 import { findAllergyConflicts } from "@/domain/allergy";
@@ -22,7 +23,7 @@ export function ConditionSheet({ open, onClose, item }: { open: boolean; onClose
 
   const save = async () => {
     const data = { ...f, name: f.name.trim(), onsetDate: f.onsetDate || undefined, notes: f.notes || undefined };
-    if (item) await db.conditions.update(item.id, data);
+    if (item) await db.conditions.update(item.id, { ...data, ...markEdited(item, data) });
     else await db.conditions.add({ ...data, id: uid(), createdAt: nowIso() });
     void syncReminders();
     toast.success(t("Saved"));
@@ -102,7 +103,7 @@ export function AllergySheet({ open, onClose, item }: { open: boolean; onClose: 
 
   const save = async () => {
     const data = { ...f, substance: f.substance.trim(), reaction: f.reaction || undefined };
-    if (item) await db.allergies.update(item.id, data);
+    if (item) await db.allergies.update(item.id, { ...data, ...markEdited(item, data) });
     else await db.allergies.add({ ...data, id: uid(), createdAt: nowIso() });
     toast.success(t("Saved"));
     onClose();
@@ -201,7 +202,7 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
       prescriber: f.prescriber || undefined,
       instructions: f.instructions || undefined,
     };
-    if (item) await db.medications.update(item.id, data);
+    if (item) await db.medications.update(item.id, { ...data, ...markEdited(item, data) });
     else await db.medications.add({ ...data, id: uid(), createdAt: nowIso() });
     void syncReminders();
     toast.success(t("Saved"));

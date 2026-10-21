@@ -35,26 +35,30 @@ export async function loadSampleHealthData() {
         });
       }
 
+      // Where the sample data came from: clinic letters and prescriptions, a clinic sending
+      // directly through the app, or the patient typing it in.
+      const letterId = uid();
+      const prescriptionId = uid();
       await db.conditions.bulkAdd([
-        { id: uid(), name: "Type 2 diabetes", status: "active", chronic: true, onsetDate: m(-60), createdAt: created },
-        { id: uid(), name: "Hypertension", status: "active", chronic: true, onsetDate: m(-36), createdAt: created },
+        { id: uid(), name: "Type 2 diabetes", status: "active", chronic: true, onsetDate: m(-60), createdAt: created, sourceRecordId: letterId },
+        { id: uid(), name: "Hypertension", status: "active", chronic: true, onsetDate: m(-36), createdAt: created, sourceRecordId: letterId },
         { id: uid(), name: "Malaria", status: "resolved", chronic: false, onsetDate: m(-14), createdAt: created },
       ]);
       await db.allergies.bulkAdd([
-        { id: uid(), substance: "Penicillin", reaction: "Rash and swelling", severity: "severe", status: "active", createdAt: created },
+        { id: uid(), substance: "Penicillin", reaction: "Rash and swelling", severity: "severe", status: "active", createdAt: created, sourceFacility: "Afya Bora Hospital" },
         { id: uid(), substance: "Sulfa drugs", reaction: "Hives", severity: "moderate", status: "active", createdAt: created },
       ]);
       await db.medications.bulkAdd([
-        { id: uid(), name: "Metformin", dose: "500 mg", frequency: "Twice daily with meals", type: "repeat", status: "active", prescriptionOnly: true, startDate: m(-60), reviewDate: d(12), prescriber: "Dr. A. Otieno", createdAt: created },
-        { id: uid(), name: "Amlodipine", dose: "5 mg", frequency: "Once daily", type: "repeat", status: "active", prescriptionOnly: true, startDate: m(-36), reviewDate: m(4), prescriber: "Dr. A. Otieno", createdAt: created },
-        { id: uid(), name: "Atorvastatin", dose: "20 mg", frequency: "Once daily at night", type: "repeat", status: "active", prescriptionOnly: true, startDate: m(-24), reviewDate: d(-5), prescriber: "Dr. A. Otieno", createdAt: created },
+        { id: uid(), name: "Metformin", dose: "500 mg", frequency: "Twice daily with meals", type: "repeat", status: "active", prescriptionOnly: true, startDate: m(-60), reviewDate: d(12), prescriber: "Dr. A. Otieno", createdAt: created, sourceRecordId: prescriptionId },
+        { id: uid(), name: "Amlodipine", dose: "5 mg", frequency: "Once daily", type: "repeat", status: "active", prescriptionOnly: true, startDate: m(-36), reviewDate: m(4), prescriber: "Dr. A. Otieno", createdAt: created, sourceRecordId: prescriptionId },
+        { id: uid(), name: "Atorvastatin", dose: "20 mg", frequency: "Once daily at night", type: "repeat", status: "active", prescriptionOnly: true, startDate: m(-24), reviewDate: d(-5), prescriber: "Dr. A. Otieno", createdAt: created, sourceRecordId: prescriptionId },
         { id: uid(), name: "Paracetamol", dose: "1 g", frequency: "Up to 4 times daily when needed", type: "acute", status: "active", prescriptionOnly: false, startDate: d(-3), createdAt: created },
       ]);
       await db.immunisations.bulkAdd([
-        { id: uid(), vaccine: "Tetanus-diphtheria (Td)", doseNumber: 1, seriesTotal: 1, dateGiven: m(-50), batchNumber: "TD-88231", administeredBy: "Uzima Family Clinic", site: "Left arm", createdAt: created },
-        { id: uid(), vaccine: "COVID-19", doseNumber: 1, seriesTotal: 2, dateGiven: m(-40), batchNumber: "CV-11920", administeredBy: "Afya Bora Hospital", site: "Left arm", createdAt: created },
-        { id: uid(), vaccine: "COVID-19", doseNumber: 2, seriesTotal: 2, dateGiven: m(-38), batchNumber: "CV-12007", administeredBy: "Afya Bora Hospital", site: "Left arm", createdAt: created },
-        { id: uid(), vaccine: "Hepatitis B", doseNumber: 1, seriesTotal: 3, dateGiven: m(-2), batchNumber: "HB-5521", administeredBy: "Uzima Family Clinic", createdAt: created },
+        { id: uid(), vaccine: "Tetanus-diphtheria (Td)", doseNumber: 1, seriesTotal: 1, dateGiven: m(-50), batchNumber: "TD-88231", administeredBy: "Uzima Family Clinic", site: "Left arm", createdAt: created, sourceFacility: "Uzima Family Clinic" },
+        { id: uid(), vaccine: "COVID-19", doseNumber: 1, seriesTotal: 2, dateGiven: m(-40), batchNumber: "CV-11920", administeredBy: "Afya Bora Hospital", site: "Left arm", createdAt: created, sourceFacility: "Afya Bora Hospital" },
+        { id: uid(), vaccine: "COVID-19", doseNumber: 2, seriesTotal: 2, dateGiven: m(-38), batchNumber: "CV-12007", administeredBy: "Afya Bora Hospital", site: "Left arm", createdAt: created, sourceFacility: "Afya Bora Hospital" },
+        { id: uid(), vaccine: "Hepatitis B", doseNumber: 1, seriesTotal: 3, dateGiven: m(-2), batchNumber: "HB-5521", administeredBy: "Uzima Family Clinic", createdAt: created, sourceFacility: "Uzima Family Clinic" },
         { id: uid(), vaccine: "Hepatitis B", doseNumber: 2, seriesTotal: 3, dueDate: d(-6), createdAt: created },
         { id: uid(), vaccine: "Influenza", doseNumber: 1, seriesTotal: 1, dueDate: d(20), createdAt: created },
       ]);
@@ -88,9 +92,9 @@ export async function loadSampleHealthData() {
       await db.labResults.bulkAdd(results);
 
       await db.records.bulkAdd([
-        { id: uid(), category: "letter", title: "Diabetes clinic review letter", date: m(-1), facilityName: "Uzima Family Clinic", source: "facility", notes: "HbA1c improving. Continue metformin. Review in 3 months.", createdAt: created, seenAt: created },
+        { id: letterId, category: "letter", title: "Diabetes clinic review letter", date: m(-1), facilityName: "Uzima Family Clinic", source: "facility", notes: "Type 2 diabetes and hypertension. HbA1c improving. Continue metformin. Review in 3 months.", createdAt: created, seenAt: created },
         { id: uid(), category: "radiology", title: "Chest X-ray report", date: m(-14), facilityName: "Afya Bora Hospital", source: "facility", notes: "No active lung disease.", createdAt: created, seenAt: created },
-        { id: uid(), category: "prescription", title: "Repeat prescription — Metformin, Amlodipine, Atorvastatin", date: m(-2), facilityName: "Uzima Family Clinic", source: "facility", notes: "Valid for 6 months, 5 repeats.", createdAt: created, seenAt: created },
+        { id: prescriptionId, category: "prescription", title: "Repeat prescription — Metformin, Amlodipine, Atorvastatin", date: m(-2), facilityName: "Uzima Family Clinic", source: "facility", notes: "Valid for 6 months, 5 repeats.", createdAt: created, seenAt: created },
       ]);
 
       await db.ruleStatus.bulkPut([

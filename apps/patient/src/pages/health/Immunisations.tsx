@@ -4,13 +4,15 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Plus, Syringe } from "lucide-react";
 import { db } from "@/db/db";
+import { markEdited } from "@/domain/provenance";
 import type { Immunisation } from "@/db/types";
 import { Badge, Button, Card, Chips, ConfirmDialog, EmptyState, Field, Input, Sheet, Tabs, Textarea } from "@/components/ui";
 import { Page, PageHeader } from "@/components/layout";
 import { COMMON_VACCINES } from "@/data/kenya";
 import { immunisationState, type ImmunisationState } from "@/domain/reminders";
 import { syncReminders } from "@/db/actions";
-import { active, useFormat } from "@/lib/hooks";
+import { active, useFormat, useProvenance } from "@/lib/hooks";
+import { SourceLabel, SourceSheet, wordsFor } from "@/components/SourceDocumentSheet";
 import { nowIso, today, uid } from "@/lib/utils";
 
 const STATE_TONE: Record<ImmunisationState, "green" | "red" | "amber" | "blue" | "slate"> = {
@@ -28,6 +30,8 @@ export function ImmunisationsPage() {
   const all = active(useLiveQuery(() => db.immunisations.toArray(), []));
   const [filter, setFilter] = useState<"all" | "todo" | "given">("all");
   const [edit, setEdit] = useState<Immunisation | null | undefined>(undefined);
+  const [trace, setTrace] = useState<Immunisation | null>(null);
+  const provenance = useProvenance();
   const tk = today();
 
   const groups = useMemo(() => {
@@ -94,7 +98,7 @@ export function ImmunisationsPage() {
               <ul className="mt-2">
                 {doses.map((d) => (
                   <li key={d.id}>
-                    <button type="button" onClick={() => setEdit(d)} className="flex w-full items-center gap-3 border-t border-ink/10 px-4 py-2.5 text-left">
+                    <button type="button" onClick={() => (d.dateGiven ? setTrace(d) : setEdit(d))} className="flex w-full items-center gap-3 border-t border-ink/10 px-4 py-2.5 text-left">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/5 text-xs font-semibold">{d.doseNumber}</span>
                       <span className="min-w-0 flex-1 text-sm">
                         <span className="block">{d.dateGiven ? fmt.date(d.dateGiven) : d.dueDate ? t("Due {{date}}", { date: fmt.date(d.dueDate) }) : t("No date")}</span>
@@ -103,6 +107,7 @@ export function ImmunisationsPage() {
                             {[d.administeredBy, d.batchNumber && `${t("Batch")} ${d.batchNumber}`].filter(Boolean).join(" · ")}
                           </span>
                         )}
+                        {d.dateGiven && <SourceLabel p={provenance(d)} className="mt-0.5 max-w-full" />}
                       </span>
                       <Badge tone={STATE_TONE[d.state]}>{t(STATE_LABEL[d.state])}</Badge>
                     </button>
@@ -114,11 +119,30 @@ export function ImmunisationsPage() {
         )}
       </Page>
       <ImmunisationSheet open={edit !== undefined} item={edit ?? undefined} onClose={() => setEdit(undefined)} />
+      <SourceSheet
+        target={
+          trace
+            ? {
+                title: trace.vaccine,
+                detail: [t("Dose {{n}} of {{total}}", { n: trace.doseNumber, total: trace.seriesTotal }), trace.batchNumber && `${t("Batch")} ${trace.batchNumber}`].filter(Boolean).join(" · "),
+                date: trace.dateGiven,
+                provenance: provenance(trace),
+                find: { words: wordsFor("vaccine", trace.vaccine), prefer: [trace.batchNumber ?? "", `dose ${trace.doseNumber}`] },
+              }
+            : null
+        }
+        onClose={() => setTrace(null)}
+        onEdit={() => {
+          const item = trace;
+          setTrace(null);
+          setEdit(item);
+        }}
+      />
     </>
   );
 }
 
-function ImmunisationSheet({ open, onClose, item }: { open: boolean; onClose: () => void; item?: Immunisation }) {
+export function ImmunisationSheet({ open, onClose, item }: { open: boolean; onClose: () => void; item?: Immunisation }) {
   const { t } = useTranslation();
   const [given, setGiven] = useState<"given" | "due">("given");
   const [f, setF] = useState({ vaccine: "", doseNumber: "1", seriesTotal: "1", dateGiven: today(), dueDate: "", batchNumber: "", administeredBy: "", site: "", notes: "" });
@@ -154,7 +178,7 @@ function ImmunisationSheet({ open, onClose, item }: { open: boolean; onClose: ()
       site: given === "given" ? f.site || undefined : undefined,
       notes: f.notes || undefined,
     };
-    if (item) await db.immunisations.update(item.id, data);
+    if (item) await db.immunisations.update(item.id, { ...data, ...markEdited(item, data) });
     else await db.immunisations.add({ ...data, id: uid(), createdAt: nowIso() });
     void syncReminders();
     toast.success(t("Saved"));

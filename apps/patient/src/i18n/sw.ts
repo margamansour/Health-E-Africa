@@ -884,4 +884,23 @@ export const sw: Record<string, string> = {
   // Unit standardisation
   "Converted from {{value}} {{unit}}": "Imebadilishwa kutoka {{value}} {{unit}}",
   "The report shows {{value}} {{unit}}. We converted it to {{std}} so all your results use the same unit.": "Ripoti inaonyesha {{value}} {{unit}}. Tumeibadilisha kuwa {{std}} ili matokeo yako yote yatumie kipimo kimoja.",
+  // Where items came from
+  "Where this came from": "Hii ilitoka wapi",
+  "Verified document": "Hati iliyothibitishwa",
+  "Unverified document": "Hati isiyothibitishwa",
+  "From {{name}}": "Kutoka {{name}}",
+  "From {{name}} · edited by you": "Kutoka {{name}} · umeihariri",
+  "From a document · edited by you": "Kutoka kwa hati · umeihariri",
+  "Added by you · not verified": "Umeongeza mwenyewe · haijathibitishwa",
+  "Source document removed": "Hati chanzo imeondolewa",
+  "Sent by {{name}} through the app.": "Imetumwa na {{name}} kupitia programu.",
+  "Sent by {{name}} through the app. There is no uploaded document for this item.": "Imetumwa na {{name}} kupitia programu. Hakuna hati iliyopakiwa kwa kipengee hiki.",
+  "You added this yourself, so it isn't verified.": "Uliongeza hii mwenyewe, kwa hivyo haijathibitishwa.",
+  "Upload a letter, prescription or report from your clinic to back it up.": "Pakia barua, agizo la dawa au ripoti kutoka kliniki yako kuithibitisha.",
+  "Upload a document": "Pakia hati",
+  "The document this came from is no longer available.": "Hati ambayo hii ilitoka haipatikani tena.",
+  "You changed this after it was added, so it's no longer marked as verified. The original document is shown below.": "Ulibadilisha hii baada ya kuongezwa, kwa hivyo haijawekwa alama ya kuthibitishwa tena. Hati asili inaonyeshwa hapa chini.",
+  "The highlighted line is where this appears.": "Mstari ulioangaziwa ndipo hii inapoonekana.",
+  "We couldn't pinpoint the line, but it is in this document.": "Hatukuweza kubainisha mstari, lakini iko katika hati hii.",
+  "Close-up of the item in the document": "Picha ya karibu ya kipengee katika hati",
 };
