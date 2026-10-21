@@ -160,3 +160,8 @@ export function analyteOrder(analyte: string): number {
   const i = ANALYTES.findIndex((a) => a.name === analyte);
   return i === -1 ? 1000 : i;
 }
+
+/** Show a result without floating-point noise (1.2000000000000002 → 1.2). */
+export function formatValue(v: number): string {
+  return String(Math.round(v * 1000) / 1000);
+}

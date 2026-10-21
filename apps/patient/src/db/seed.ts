@@ -74,8 +74,8 @@ export async function loadSampleHealthData() {
         ]);
         results.push({ id: uid(), panelId: p1, analyte: "HbA1c", value: hba1c[i]!, unit: "%", refLow: 4, refHigh: 5.7, date });
         results.push({ id: uid(), panelId: p2, analyte: "LDL cholesterol", value: ldl[i]!, unit: "mmol/L", refHigh: 3.4, date });
-        results.push({ id: uid(), panelId: p2, analyte: "HDL cholesterol", value: 1.1 + i * 0.05, unit: "mmol/L", refLow: 1.0, date });
-        results.push({ id: uid(), panelId: p2, analyte: "Total cholesterol", value: 6.0 - i * 0.3, unit: "mmol/L", refHigh: 5.2, date });
+        results.push({ id: uid(), panelId: p2, analyte: "HDL cholesterol", value: Math.round((1.1 + i * 0.05) * 100) / 100, unit: "mmol/L", refLow: 1.0, date });
+        results.push({ id: uid(), panelId: p2, analyte: "Total cholesterol", value: Math.round((6.0 - i * 0.3) * 10) / 10, unit: "mmol/L", refHigh: 5.2, date });
       }
       const fbc = uid();
       const fbcDate = m(-1);

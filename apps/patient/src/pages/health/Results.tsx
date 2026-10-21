@@ -4,23 +4,23 @@ import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BadgeCheck, ChevronDown, ClipboardPaste, FlaskConical, History, Plus, Trash2 } from "lucide-react";
+import { BadgeCheck, ChevronDown, ClipboardPaste, FlaskConical, Plus, Trash2 } from "lucide-react";
 import { db } from "@/db/db";
 import type { LabPanel, LabResult } from "@/db/types";
 import { Button, Card, EmptyState, Field, Input, Notice, Select, Sheet, Tabs, Textarea } from "@/components/ui";
 import { Page, PageHeader } from "@/components/layout";
-import { analyteOrder, flagFor, LAB_GROUPS, labGroupFor, PANEL_TEMPLATES, parseResultsText, type ParsedRow } from "@/domain/labs";
+import { analyteOrder, flagFor, formatValue, LAB_GROUPS, labGroupFor, PANEL_TEMPLATES, parseResultsText, type ParsedRow } from "@/domain/labs";
 import { active, useFormat, useVerifiedRecordIds } from "@/lib/hooks";
 import { ScanUploadSheet } from "@/components/ScanUploadSheet";
 import { SourceDocumentSheet } from "@/components/SourceDocumentSheet";
 import { cn, nowIso, today, uid } from "@/lib/utils";
 
-type View = "panels" | "table" | "graph";
+type View = "table" | "graph";
 
 export function ResultsPage() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState<View>("panels");
+  const [view, setView] = useState<View>("table");
   const [source, setSource] = useState<LabResult | null>(null);
   const panels = active(useLiveQuery(() => db.labPanels.orderBy("date").reverse().toArray(), []));
   const results = useLiveQuery(() => db.labResults.orderBy("date").toArray(), []) ?? [];
@@ -59,13 +59,11 @@ export function ResultsPage() {
               value={view}
               onChange={setView}
               options={[
-                { value: "panels", label: t("Panels") },
                 { value: "table", label: t("Table") },
                 { value: "graph", label: t("Graph") },
               ]}
             />
-            {view === "panels" && <GroupedView results={liveResults} panelById={panelById} onOpenSource={setSource} />}
-            {view === "table" && <TableView results={liveResults} onOpenSource={setSource} />}
+            {view === "table" && <GroupedTable results={liveResults} panelById={panelById} onOpenSource={setSource} />}
             {view === "graph" && <GraphView results={liveResults} />}
             {view !== "graph" && <p className="px-1 text-center text-xs text-ink/45">{t("Tap a value to see the document it came from.")}</p>}
           </>
@@ -82,7 +80,7 @@ function ValueCell({ r }: { r: LabResult }) {
   const f = flagFor(r);
   return (
     <span className={cn("font-semibold", f === "high" || f === "low" ? "text-red-600" : "text-ink")}>
-      {r.value}
+      {formatValue(r.value)}
       {f === "high" ? " ↑" : f === "low" ? " ↓" : ""}
     </span>
   );
@@ -95,183 +93,119 @@ function range(r: Pick<LabResult, "refLow" | "refHigh">) {
   return "";
 }
 
-/** Results grouped under clinical headings (CBC, U&Es, LFTs…), latest value first, history on tap. */
-function GroupedView({ results, panelById, onOpenSource }: { results: LabResult[]; panelById: Map<string, LabPanel>; onOpenSource: (r: LabResult) => void }) {
+/**
+ * Results table grouped under clinical headings (CBC, U&Es, LFTs…). Each group has its own
+ * columns for the dates it was tested; tap a value to see the document it came from.
+ */
+function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult[]; panelById: Map<string, LabPanel>; onOpenSource: (r: LabResult) => void }) {
   const { t } = useTranslation();
   const fmt = useFormat();
   const verifiedIds = useVerifiedRecordIds();
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-  const [openTests, setOpenTests] = useState<Set<string>>(new Set());
+  const [closed, setClosed] = useState<Set<string>>(new Set());
 
   const groups = useMemo(() => {
-    const byGroup = new Map<string, Map<string, LabResult[]>>();
+    const byGroup = new Map<string, LabResult[]>();
     for (const r of results) {
       const g = labGroupFor(r.analyte, panelById.get(r.panelId)?.name);
-      const tests = byGroup.get(g) ?? new Map<string, LabResult[]>();
-      tests.set(r.analyte, [...(tests.get(r.analyte) ?? []), r]);
-      byGroup.set(g, tests);
+      byGroup.set(g, [...(byGroup.get(g) ?? []), r]);
     }
     return LAB_GROUPS.filter((g) => byGroup.has(g.key)).map((g) => {
-      const tests = [...byGroup.get(g.key)!.entries()]
-        .map(([analyte, rows]) => ({ analyte, rows: rows.sort((x, y) => y.date.localeCompare(x.date)) }))
-        .sort((x, y) => analyteOrder(x.analyte) - analyteOrder(y.analyte) || x.analyte.localeCompare(y.analyte));
-      const latestDate = tests.reduce((d, x) => (x.rows[0]!.date > d ? x.rows[0]!.date : d), "");
-      const abnormal = tests.filter((x) => ["high", "low"].includes(flagFor(x.rows[0]!))).length;
-      return { ...g, tests, latestDate, abnormal };
+      const rows = byGroup.get(g.key)!;
+      const analytes = [...new Set(rows.map((r) => r.analyte))].sort((x, y) => analyteOrder(x) - analyteOrder(y) || x.localeCompare(y));
+      const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
+      const latest = (a: string) => rows.filter((r) => r.analyte === a).sort((x, y) => y.date.localeCompare(x.date))[0]!;
+      const abnormal = analytes.filter((a) => ["high", "low"].includes(flagFor(latest(a)))).length;
+      return { ...g, rows, analytes, dates, latest, abnormal };
     });
   }, [results, panelById]);
 
-  const toggle = (set: Set<string>, key: string, update: (s: Set<string>) => void) => {
-    const next = new Set(set);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    update(next);
-  };
-
-  const sourceBadge = (r: LabResult) => {
-    const p = panelById.get(r.panelId);
-    if (p?.sourceRecordId) return verifiedIds.has(p.sourceRecordId) ? <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" aria-label={t("From a verified document")} /> : null;
-    return null;
-  };
+  const toggle = (key: string) =>
+    setClosed((cur) => {
+      const next = new Set(cur);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <div className="space-y-3">
       {groups.map((g) => {
-        const open = openGroups.has(g.key);
+        const open = !closed.has(g.key);
         return (
           <Card key={g.key} tone={g.tone} className="p-0">
-            <button type="button" className="flex w-full items-center gap-3 px-4 py-3.5 text-left" aria-expanded={open} onClick={() => toggle(openGroups, g.key, setOpenGroups)}>
+            <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open} onClick={() => toggle(g.key)}>
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
                   <span className="text-xl font-extrabold">{t(g.label)}</span>
                   <span className="truncate text-xs font-semibold text-ink/55">{t(g.full)}</span>
                 </span>
                 <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="rounded-full bg-white/70 px-2 py-0.5 font-bold">{t("{{count}} test(s)", { count: g.tests.length })}</span>
+                  <span className="rounded-full bg-white/70 px-2 py-0.5 font-bold">{t("{{count}} test(s)", { count: g.analytes.length })}</span>
                   {g.abnormal > 0 ? (
                     <span className="rounded-full bg-white/70 px-2 py-0.5 font-bold text-red-600">{t("{{count}} out of range", { count: g.abnormal })}</span>
                   ) : (
                     <span className="rounded-full bg-white/70 px-2 py-0.5 font-bold text-emerald-700">{t("All in range")}</span>
                   )}
-                  <span className="text-ink/55">{t("Latest {{date}}", { date: fmt.date(g.latestDate) })}</span>
                 </span>
               </span>
               <ChevronDown className={cn("h-5 w-5 shrink-0 transition", open && "rotate-180")} />
             </button>
             {open && (
-              <ul className="space-y-1.5 px-2 pb-2">
-                {g.tests.map(({ analyte, rows }) => {
-                  const latest = rows[0]!;
-                  const key = `${g.key}:${analyte}`;
-                  const histOpen = openTests.has(key);
-                  return (
-                    <li key={analyte} className="rounded-2xl bg-white px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="flex items-center gap-1 text-sm font-bold">
-                            <span className="truncate">{analyte}</span>
-                            {sourceBadge(latest)}
-                          </p>
-                          <p className="text-[11px] text-ink/50">
-                            {fmt.date(latest.date)}
-                            {range(latest) && ` · ${t("Normal range")} ${range(latest)}`}
-                          </p>
-                        </div>
-                        <ValueButton r={latest} onClick={() => onOpenSource(latest)} />
-                      </div>
-                      {rows.length > 1 && (
-                        <>
-                          <button type="button" className="mt-1 flex items-center gap-1 text-[11px] font-bold text-ink/60" onClick={() => toggle(openTests, key, setOpenTests)}>
-                            <History className="h-3 w-3" />
-                            {histOpen ? t("Hide earlier results") : t("{{count}} earlier result(s)", { count: rows.length - 1 })}
-                          </button>
-                          {histOpen && (
-                            <ul className="mt-1.5 divide-y divide-ink/5 border-t border-ink/5">
-                              {rows.slice(1).map((r) => (
-                                <li key={r.id} className="flex items-center justify-between py-1.5 text-xs">
-                                  <span className="text-ink/60">{fmt.date(r.date)}</span>
-                                  <ValueButton r={r} small onClick={() => onOpenSource(r)} />
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="mx-2 mb-2 overflow-x-auto rounded-2xl bg-white">
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-ink/55">
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left">{t("Test")}</th>
+                      {g.dates.map((d) => (
+                        <th key={d} className="whitespace-nowrap px-3 py-2 text-right">
+                          {fmt.date(d, { day: "numeric", month: "short", year: "2-digit" })}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.analytes.map((a) => {
+                      const ref = g.latest(a);
+                      return (
+                        <tr key={a} className="border-t border-ink/5">
+                          <td className="sticky left-0 z-10 w-[9.5rem] min-w-[9.5rem] bg-white px-3 py-2">
+                            <span className="block font-semibold leading-tight text-ink">{a}</span>
+                            <span className="block whitespace-nowrap text-[11px] text-ink/45">
+                              {[ref.unit, range(ref)].filter(Boolean).join(" · ")}
+                            </span>
+                          </td>
+                          {g.dates.map((d) => {
+                            const r = g.rows.find((x) => x.analyte === a && x.date === d);
+                            const src = r ? panelById.get(r.panelId)?.sourceRecordId : undefined;
+                            return (
+                              <td key={d} className="whitespace-nowrap px-3 py-2 text-right">
+                                {r ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenSource(r)}
+                                    aria-label={t("{{name}} {{value}} {{unit}}: show source document", { name: a, value: r.value, unit: r.unit })}
+                                    className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-4"
+                                  >
+                                    <ValueCell r={r} />
+                                    {src && verifiedIds.has(src) && <BadgeCheck className="h-3 w-3 text-emerald-600" />}
+                                  </button>
+                                ) : (
+                                  <span className="text-ink/25">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         );
       })}
     </div>
-  );
-}
-
-/** A result value that opens the document it came from. */
-function ValueButton({ r, onClick, small }: { r: LabResult; onClick: () => void; small?: boolean }) {
-  const { t } = useTranslation();
-  const f = flagFor(r);
-  const bad = f === "high" || f === "low";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={t("{{name}} {{value}} {{unit}}: show source document", { name: r.analyte, value: r.value, unit: r.unit })}
-      className={cn(
-        "shrink-0 rounded-full px-3 py-1 text-right font-extrabold underline decoration-dotted underline-offset-4 transition active:scale-95",
-        small ? "text-xs" : "text-base",
-        bad ? "bg-coral/40 text-red-700" : "bg-cream text-ink",
-      )}
-    >
-      {r.value}
-      {f === "high" ? " ↑" : f === "low" ? " ↓" : ""} <span className="text-[11px] font-semibold text-ink/55 no-underline">{r.unit}</span>
-    </button>
-  );
-}
-
-function TableView({ results, onOpenSource }: { results: LabResult[]; onOpenSource: (r: LabResult) => void }) {
-  const { t } = useTranslation();
-  const fmt = useFormat();
-  const analytes = [...new Set(results.map((r) => r.analyte))].sort();
-  const dates = [...new Set(results.map((r) => r.date))].sort().reverse();
-  return (
-    <Card className="overflow-x-auto p-0">
-      <table className="w-full text-sm">
-        <thead className="bg-cream text-xs text-ink/55">
-          <tr>
-            <th className="sticky left-0 bg-cream px-3 py-2 text-left">{t("Test")}</th>
-            {dates.map((d) => (
-              <th key={d} className="whitespace-nowrap px-3 py-2 text-right">
-                {fmt.date(d, { day: "numeric", month: "short", year: "2-digit" })}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {analytes.map((a) => (
-            <tr key={a} className="border-t border-ink/10">
-              <td className="sticky left-0 whitespace-nowrap bg-white px-3 py-2 text-ink/80">{a}</td>
-              {dates.map((d) => {
-                const r = results.find((x) => x.analyte === a && x.date === d);
-                return (
-                  <td key={d} className="px-3 py-2 text-right">
-                    {r ? (
-                      <button type="button" className="underline decoration-dotted underline-offset-4" onClick={() => onOpenSource(r)}>
-                        <ValueCell r={r} />
-                      </button>
-                    ) : (
-                      <span className="text-ink/25">—</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
   );
 }
 

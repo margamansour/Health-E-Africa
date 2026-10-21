@@ -8,7 +8,7 @@ import { Button, Notice, Sheet } from "./ui";
 import { VerifiedBadge } from "./VerificationCard";
 import { ANALYTES } from "@/domain/extract/dictionary";
 import { useFormat } from "@/lib/hooks";
-import { flagFor } from "@/domain/labs";
+import { flagFor, formatValue } from "@/domain/labs";
 import { cn } from "@/lib/utils";
 
 interface Box {
@@ -184,7 +184,7 @@ export function SourceDocumentSheet({ result, panel, onClose }: { result: LabRes
             <p className="text-xs text-ink/55">{fmt.date(result.date)}</p>
           </div>
           <p className={cn("shrink-0 text-2xl font-extrabold", flag === "high" || flag === "low" ? "text-red-600" : "")}>
-            {result.value}
+            {formatValue(result.value)}
             <span className="ml-1 text-sm font-semibold text-ink/55">{result.unit}</span>
           </p>
         </div>
