@@ -853,6 +853,8 @@ export const sw: Record<string, string> = {
   "{{count}} earlier result(s)": "Matokeo {{count}} ya awali",
   "Hide earlier results": "Ficha matokeo ya awali",
   "Tap a value to see the document it came from.": "Gusa thamani kuona hati ilikotoka.",
+  "Tap a test name to see its graph, or a value to see the document it came from.": "Gusa jina la kipimo kuona grafu yake, au thamani kuona hati ilikotoka.",
+  "Show {{name}} on a graph": "Onyesha {{name}} kwenye grafu",
   "{{name}} {{value}} {{unit}}: show source document": "{{name}} {{value}} {{unit}}: onyesha hati ya chanzo",
   "Where this result came from": "Matokeo haya yalikotoka",
   "Open record": "Fungua rekodi",

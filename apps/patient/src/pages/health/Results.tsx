@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BadgeCheck, ChevronDown, ClipboardPaste, FlaskConical, Plus, Trash2 } from "lucide-react";
+import { BadgeCheck, ChartLine as LineChartIcon, ChevronDown, ClipboardPaste, FlaskConical, Plus, Trash2 } from "lucide-react";
 import { db } from "@/db/db";
 import type { LabPanel, LabResult } from "@/db/types";
 import { Button, Card, EmptyState, Field, Input, Notice, Select, Sheet, Tabs, Textarea } from "@/components/ui";
@@ -21,7 +21,13 @@ type View = "table" | "graph";
 export function ResultsPage() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState<View>("table");
+  const view: View = params.get("view") === "graph" ? "graph" : "table";
+  const graphTest = params.get("test") ?? "";
+  const setView = (v: View) => setParams(v === "graph" ? { view: "graph", ...(graphTest ? { test: graphTest } : {}) } : {}, { replace: true });
+  const openGraph = (test: string) => {
+    setParams({ view: "graph", test });
+    window.scrollTo({ top: 0 });
+  };
   const [source, setSource] = useState<LabResult | null>(null);
   const panels = active(useLiveQuery(() => db.labPanels.orderBy("date").reverse().toArray(), []));
   const results = useLiveQuery(() => db.labResults.orderBy("date").toArray(), []) ?? [];
@@ -64,9 +70,9 @@ export function ResultsPage() {
                 { value: "graph", label: t("Graph") },
               ]}
             />
-            {view === "table" && <GroupedTable results={liveResults} panelById={panelById} onOpenSource={setSource} />}
-            {view === "graph" && <GraphView results={liveResults} />}
-            {view !== "graph" && <p className="px-1 text-center text-xs text-ink/45">{t("Tap a value to see the document it came from.")}</p>}
+            {view === "table" && <GroupedTable results={liveResults} panelById={panelById} onOpenSource={setSource} onOpenGraph={openGraph} />}
+            {view === "graph" && <GraphView results={liveResults} test={graphTest} onTestChange={(test) => setParams({ view: "graph", test }, { replace: true })} />}
+            {view !== "graph" && <p className="px-1 text-center text-xs text-ink/45">{t("Tap a test name to see its graph, or a value to see the document it came from.")}</p>}
           </>
         )}
       </Page>
@@ -94,11 +100,25 @@ function range(r: Pick<LabResult, "refLow" | "refHigh">) {
   return "";
 }
 
+/** A test we can't convert, reported in two different units, is kept apart per unit. */
+const keyOf = (r: LabResult) => (standardUnit(r.analyte) ? r.analyte : `${r.analyte}␟${normUnit(r.unit)}`);
+const nameOf = (key: string) => key.split("␟")[0]!;
+
 /**
  * Results table grouped under clinical headings (CBC, U&Es, LFTs…). Each group has its own
  * columns for the dates it was tested; tap a value to see the document it came from.
  */
-function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult[]; panelById: Map<string, LabPanel>; onOpenSource: (r: LabResult) => void }) {
+function GroupedTable({
+  results,
+  panelById,
+  onOpenSource,
+  onOpenGraph,
+}: {
+  results: LabResult[];
+  panelById: Map<string, LabPanel>;
+  onOpenSource: (r: LabResult) => void;
+  onOpenGraph: (test: string) => void;
+}) {
   const { t } = useTranslation();
   const fmt = useFormat();
   const verifiedIds = useVerifiedRecordIds();
@@ -112,13 +132,11 @@ function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult
     }
     return LAB_GROUPS.filter((g) => byGroup.has(g.key)).map((g) => {
       const rows = byGroup.get(g.key)!;
-      // A test we can't convert, reported in two different units, gets one row per unit.
-      const keyOf = (r: LabResult) => (standardUnit(r.analyte) ? r.analyte : `${r.analyte}␟${normUnit(r.unit)}`);
       const analytes = [...new Set(rows.map(keyOf))].sort((x, y) => analyteOrder(x.split("␟")[0]!) - analyteOrder(y.split("␟")[0]!) || x.localeCompare(y));
       const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
       const latest = (a: string) => rows.filter((r) => keyOf(r) === a).sort((x, y) => y.date.localeCompare(x.date))[0]!;
       const abnormal = analytes.filter((a) => ["high", "low"].includes(flagFor(latest(a)))).length;
-      return { ...g, rows, analytes, dates, latest, abnormal, keyOf };
+      return { ...g, rows, analytes, dates, latest, abnormal };
     });
   }, [results, panelById]);
 
@@ -172,13 +190,23 @@ function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult
                       return (
                         <tr key={a} className="border-t border-ink/5">
                           <td className="sticky left-0 z-10 w-[9.5rem] min-w-[9.5rem] bg-white px-3 py-2">
-                            <span className="block font-semibold leading-tight text-ink">{a.split("␟")[0]}</span>
-                            <span className="block whitespace-nowrap text-[11px] text-ink/45">
-                              {[ref.unit, range(ref)].filter(Boolean).join(" · ")}
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onOpenGraph(a)}
+                              aria-label={t("Show {{name}} on a graph", { name: nameOf(a) })}
+                              className="block w-full text-left"
+                            >
+                              <span className="flex items-start gap-1 font-semibold leading-tight text-ink">
+                                {nameOf(a)}
+                                <LineChartIcon className="mt-0.5 h-3 w-3 shrink-0 text-ink/35" aria-hidden />
+                              </span>
+                              <span className="block whitespace-nowrap text-[11px] text-ink/45">
+                                {[ref.unit, range(ref)].filter(Boolean).join(" · ")}
+                              </span>
+                            </button>
                           </td>
                           {g.dates.map((d) => {
-                            const r = g.rows.find((x) => g.keyOf(x) === a && x.date === d);
+                            const r = g.rows.find((x) => keyOf(x) === a && x.date === d);
                             const src = r ? panelById.get(r.panelId)?.sourceRecordId : undefined;
                             return (
                               <td key={d} className="whitespace-nowrap px-3 py-2 text-right">
@@ -212,12 +240,17 @@ function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult
   );
 }
 
-function GraphView({ results }: { results: LabResult[] }) {
+function GraphView({ results, test, onTestChange }: { results: LabResult[]; test: string; onTestChange: (test: string) => void }) {
   const { t } = useTranslation();
   const fmt = useFormat();
-  const analytes = [...new Set(results.map((r) => r.analyte))].sort((a, b) => results.filter((r) => r.analyte === b).length - results.filter((r) => r.analyte === a).length);
-  const [analyte, setAnalyte] = useState(analytes[0] ?? "");
-  const series = results.filter((r) => r.analyte === analyte).sort((a, b) => a.date.localeCompare(b.date));
+  // Tests in alphabetical order.
+  const keys = [...new Set(results.map(keyOf))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+  const analyte = keys.includes(test) ? test : (keys[0] ?? "");
+  const series = results.filter((r) => keyOf(r) === analyte).sort((a, b) => a.date.localeCompare(b.date));
+  const label = (k: string) => {
+    const unit = k.includes("␟") ? results.find((r) => keyOf(r) === k)?.unit : undefined;
+    return unit ? `${nameOf(k)} (${unit})` : nameOf(k);
+  };
   const last = series[series.length - 1];
   const data = series.map((r) => ({ date: fmt.date(r.date, { month: "short", year: "2-digit" }), value: r.value }));
 
@@ -233,10 +266,10 @@ function GraphView({ results }: { results: LabResult[] }) {
 
   return (
     <Card className="space-y-3">
-      <Select value={analyte} onChange={(e) => setAnalyte(e.target.value)} aria-label={t("Test")}>
-        {analytes.map((a) => (
-          <option key={a} value={a}>
-            {a} ({results.filter((r) => r.analyte === a).length})
+      <Select value={analyte} onChange={(e) => onTestChange(e.target.value)} aria-label={t("Test")}>
+        {keys.map((k) => (
+          <option key={k} value={k}>
+            {label(k)} ({results.filter((r) => keyOf(r) === k).length})
           </option>
         ))}
       </Select>
@@ -263,7 +296,7 @@ function GraphView({ results }: { results: LabResult[] }) {
               )}
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} domain={[yMin, yMax]} ticks={ticks} allowDataOverflow />
-              <Tooltip formatter={(v) => [`${v} ${last?.unit ?? ""}`, analyte]} />
+              <Tooltip formatter={(v) => [`${v} ${last?.unit ?? ""}`, nameOf(analyte)]} />
               <Line isAnimationActive={false} type="monotone" dataKey="value" stroke="#6c5fd8" strokeWidth={3} dot={{ r: 5, fill: "#23202f", stroke: "#fff", strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
