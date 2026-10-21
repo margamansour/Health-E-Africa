@@ -1,3 +1,4 @@
+import { ANALYTES } from "./extract/dictionary";
 import type { LabResult } from "@/db/types";
 
 export type Flag = "low" | "high" | "normal" | "unknown";
@@ -98,4 +99,64 @@ export function parseResultsText(text: string): ParseResult {
     rows.push({ analyte, value, unit, refLow, refHigh });
   });
   return { rows, errors };
+}
+
+// ---------- Clinical groups (CBC, U&Es, LFTs…) ----------
+
+
+export interface LabGroup {
+  key: string;
+  label: string;
+  full: string;
+  tone: "rose" | "sky" | "peach" | "lavender" | "butter" | "mint" | "coral" | "sage" | "white";
+}
+
+export const LAB_GROUPS: LabGroup[] = [
+  { key: "cbc", label: "CBC", full: "Complete blood count", tone: "rose" },
+  { key: "ue", label: "U&Es", full: "Urea, electrolytes and kidney function", tone: "sky" },
+  { key: "lft", label: "LFTs", full: "Liver function tests", tone: "peach" },
+  { key: "lipids", label: "Lipids", full: "Cholesterol and triglycerides", tone: "butter" },
+  { key: "diabetes", label: "Diabetes", full: "HbA1c and blood sugar", tone: "mint" },
+  { key: "tft", label: "TFTs", full: "Thyroid function tests", tone: "lavender" },
+  { key: "iron", label: "Iron studies", full: "Iron, ferritin and transferrin", tone: "coral" },
+  { key: "hiv", label: "HIV monitoring", full: "Viral load and CD4", tone: "sage" },
+  { key: "vitamins", label: "Vitamins", full: "Vitamin levels", tone: "butter" },
+  { key: "urine", label: "Urine", full: "Urine tests", tone: "sky" },
+  { key: "other", label: "Other tests", full: "Inflammation, bone and other tests", tone: "white" },
+];
+
+const PANEL_TO_GROUP: [RegExp, string][] = [
+  [/urin|microscop|physical exam|chemical exam|stool|faec/i, "urine"],
+  [/full blood|blood count|\bcbc\b|\bfbc\b|haematolog|hematolog|differential/i, "cbc"],
+  [/kidney|renal|u\s?&\s?e|electrolyte/i, "ue"],
+  [/liver|\blft/i, "lft"],
+  [/lipid/i, "lipids"],
+  [/diabet|glucose|hba1c|sugar/i, "diabetes"],
+  [/thyroid|\btft/i, "tft"],
+  [/iron/i, "iron"],
+  [/hiv|viral load|cd4/i, "hiv"],
+  [/vitamin/i, "vitamins"],
+];
+
+const ANALYTE_TO_GROUP: [RegExp, string][] = [
+  [/cholesterol|hdl|ldl|triglycer/i, "lipids"],
+  [/globulin|protein|bilirubin|albumin/i, "lft"],
+  [/bun|urea|creatinine|egfr/i, "ue"],
+  [/basophil|neutrophil|lymphocyte|monocyte|eosinophil|platelet|leucocyte|leukocyte/i, "cbc"],
+  [/glucose|hba1c/i, "diabetes"],
+];
+
+/** Which clinical group a result belongs to. Urine tests stay in Urine even when they share a blood test's name. */
+export function labGroupFor(analyte: string, panelName?: string): string {
+  if (panelName && /urin|microscop|physical exam|chemical exam|stool/i.test(panelName)) return "urine";
+  const def = ANALYTES.find((a) => a.name === analyte);
+  const fromPanel = (name: string) => PANEL_TO_GROUP.find(([re]) => re.test(name))?.[1];
+  if (def) return fromPanel(def.panel) ?? "other";
+  return (panelName && fromPanel(panelName)) ?? ANALYTE_TO_GROUP.find(([re]) => re.test(analyte))?.[1] ?? "other";
+}
+
+/** Order tests the way a clinician reads a panel (dictionary order), unknown tests last. */
+export function analyteOrder(analyte: string): number {
+  const i = ANALYTES.findIndex((a) => a.name === analyte);
+  return i === -1 ? 1000 : i;
 }

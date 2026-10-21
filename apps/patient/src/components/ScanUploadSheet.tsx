@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, Keyboard, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
 import type { RecordCategory } from "@/db/types";
 import { Button, Checkbox, Field, Input, Notice, Select, Sheet, Textarea } from "./ui";
@@ -30,7 +30,18 @@ const STAGE_TEXT: Record<ScanStage, string> = {
 type Step = "pick" | "scanning" | "review";
 type Group = keyof ScanSelection;
 
-export function ScanUploadSheet({ open, onClose, rescan }: { open: boolean; onClose: () => void; rescan?: { recordId: string; file: File } | null }) {
+export function ScanUploadSheet({
+  open,
+  onClose,
+  rescan,
+  onManual,
+}: {
+  open: boolean;
+  onClose: () => void;
+  rescan?: { recordId: string; file: File } | null;
+  /** Offer typing results in by hand (shown when opened from Results). */
+  onManual?: () => void;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const fmt = useFormat();
@@ -174,6 +185,12 @@ export function ScanUploadSheet({ open, onClose, rescan }: { open: boolean; onCl
           <p className="text-xs text-ink/55">
             {t("Printed documents from a licensed clinic that are dated, stamped or signed are marked as a verified source. Handwritten notes are saved as unverified.")}
           </p>
+          {onManual && (
+            <button type="button" onClick={onManual} className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-bold ring-1 ring-ink/10">
+              <Keyboard className="h-4 w-4" />
+              {t("No document? Type results in")}
+            </button>
+          )}
         </div>
       )}
 
@@ -243,7 +260,7 @@ export function ScanUploadSheet({ open, onClose, rescan }: { open: boolean; onCl
           {e && e.docType === "lab" && e.labs.length === 0 && (
             <Notice tone="amber" icon={<FlaskConical className="h-4 w-4" />}>
               {t("This looks like a lab report, but we couldn't read its results table. You can add the results yourself on the Results page.")}{" "}
-              <a href="#" onClick={(ev) => { ev.preventDefault(); onClose(); navigate("/results?add=1"); }} className="font-bold underline">
+              <a href="#" onClick={(ev) => { ev.preventDefault(); onClose(); navigate("/results?manual=1"); }} className="font-bold underline">
                 {t("Add results")}
               </a>
             </Notice>

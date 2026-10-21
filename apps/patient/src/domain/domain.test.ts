@@ -183,3 +183,21 @@ describe("helpers", () => {
     expect(km).toBeLessThan(460);
   });
 });
+
+describe("lab groups", async () => {
+  const { labGroupFor } = await import("./labs");
+  it("puts tests under the headings clinicians use", () => {
+    expect(labGroupFor("Haemoglobin", "Full blood count")).toBe("cbc");
+    expect(labGroupFor("Neutrophils", "Differential Count (Dc)")).toBe("cbc");
+    expect(labGroupFor("Creatinine", "Biochemistry")).toBe("ue");
+    expect(labGroupFor("Bun/creatinine ratio", "Biochemistry")).toBe("ue");
+    expect(labGroupFor("ALT", "Biochemistry")).toBe("lft");
+    expect(labGroupFor("Globulin", "Biochemistry")).toBe("lft");
+    expect(labGroupFor("Cholesterol/HDL ratio", "Lipid Profile I")).toBe("lipids");
+    expect(labGroupFor("TSH", "Other tests")).toBe("tft");
+    expect(labGroupFor("Estimated average glucose", "Diabetes (HbA1c)")).toBe("diabetes");
+    expect(labGroupFor("RBC", "Microscopic Examination")).toBe("urine");
+    expect(labGroupFor("CRP", "Other tests")).toBe("other");
+    expect(labGroupFor("Transferrin saturation", "Iron studies")).toBe("iron");
+  });
+});

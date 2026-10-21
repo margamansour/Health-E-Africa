@@ -25,6 +25,13 @@ export function RecordsPage() {
   const [selected, setSelected] = useState<HealthRecord | null>(null);
   const [rescan, setRescan] = useState<{ recordId: string; file: File } | null>(null);
   const uploadOpen = params.get("add") === "1" || !!rescan;
+  // Opened from a result's "source" link.
+  const openId = params.get("open");
+  useEffect(() => {
+    if (!openId) return;
+    void db.records.get(openId).then((r) => r && setSelected(r));
+    setParams({}, { replace: true });
+  }, [openId, setParams]);
 
   const list = useMemo(
     () =>

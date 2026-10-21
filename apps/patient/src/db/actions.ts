@@ -415,7 +415,7 @@ export async function simulateFacilityResponse(id: string, action: "confirm" | "
   // complete: the visit happened and the facility sends results back.
   await setAppointmentStatus(id, "completed");
   if (a.eventId) await db.events.update(a.eventId, { doneAt: nowIso() });
-  await addRecord({
+  const visitRecordId = await addRecord({
     category: "letter",
     title: `Visit summary — ${facility?.name ?? "facility"}`,
     date: today(),
@@ -424,7 +424,7 @@ export async function simulateFacilityResponse(id: string, action: "confirm" | "
     source: "facility",
   });
   const panelId = uid();
-  await db.labPanels.add({ id: panelId, name: "Full blood count", date: today(), facilityName: facility?.name, source: "facility", createdAt: nowIso() });
+  await db.labPanels.add({ id: panelId, name: "Full blood count", date: today(), facilityName: facility?.name, source: "facility", createdAt: nowIso(), sourceRecordId: visitRecordId });
   await db.labResults.bulkAdd([
     { id: uid(), panelId, analyte: "Haemoglobin", value: 12.8, unit: "g/dL", refLow: 12, refHigh: 17, date: today() },
     { id: uid(), panelId, analyte: "White cell count", value: 7.1, unit: "x10^9/L", refLow: 4, refHigh: 11, date: today() },
