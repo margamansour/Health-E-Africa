@@ -138,11 +138,15 @@ export interface LabResult {
   id: ID;
   panelId: ID;
   analyte: string;
+  /** Always in the standard unit for this test (see domain/units.ts). */
   value: number;
   unit: string;
   refLow?: number;
   refHigh?: number;
   date: string;
+  /** As printed on the report, when it had to be converted to the standard unit. */
+  originalValue?: number;
+  originalUnit?: string;
 }
 
 export type FacilityType = "clinic" | "hospital" | "lab" | "pharmacy";

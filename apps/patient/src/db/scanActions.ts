@@ -4,6 +4,7 @@ import type { ExtractedAllergy, ExtractedCondition, ExtractedFollowUp, Extracted
 import type { Verification } from "@/domain/extract/verify";
 import { addRecord, notify, syncReminders } from "./actions";
 import { nowIso, parseDateKey, uid } from "@/lib/utils";
+import { standardise } from "@/domain/units";
 
 export interface ScanSelection {
   labs: ExtractedLab[];
@@ -35,7 +36,10 @@ export async function existingFor() {
     },
     currentDose: (m: ExtractedMedication) => medications.find((y) => same(y.name, m.name) && y.status === "active")?.dose,
     hasImmunisation: (i: ExtractedImmunisation) => immunisations.some((x) => same(x.vaccine, i.vaccine) && x.doseNumber === i.doseNumber && x.dateGiven === i.dateGiven),
-    hasLab: (l: ExtractedLab, date?: string) => labResults.some((x) => same(x.analyte, l.analyte) && x.value === l.value && x.date === date),
+    hasLab: (l: ExtractedLab, date?: string) => {
+      const v = standardise(l.analyte, l.value, l.unit).value;
+      return labResults.some((x) => same(x.analyte, l.analyte) && (x.value === v || x.originalValue === l.value) && x.date === date);
+    },
   };
 }
 

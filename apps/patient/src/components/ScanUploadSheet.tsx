@@ -14,6 +14,7 @@ import { existingFor, saveScannedRecord, type ScanSelection } from "@/db/scanAct
 import { extractionCount } from "@/domain/extract/parse";
 import { findAllergyConflicts } from "@/domain/allergy";
 import { flagFor } from "@/domain/labs";
+import { standardise } from "@/domain/units";
 import { useFormat, useProfile } from "@/lib/hooks";
 import { cn, formatBytes, today } from "@/lib/utils";
 
@@ -301,15 +302,16 @@ export function ScanUploadSheet({
               </ItemGroup>
               <ItemGroup icon={<FlaskConical className="h-4 w-4" />} tone="bg-peach" title={t("Lab results")} count={e.labs.length}>
                 {e.labs.map((l, i) => {
-                  const f = flagFor(l);
+                  const std = standardise(l.analyte, l.value, l.unit, l.refLow, l.refHigh);
+                  const f = flagFor(std);
                   return (
                     <Item
                       key={i}
                       checked={!!keep[`labs:${i}`]}
                       onChange={toggle(`labs:${i}`)}
                       title={l.analyte}
-                      detail={t(l.panel)}
-                      value={`${l.value} ${l.unit}${f === "high" ? " ↑" : f === "low" ? " ↓" : ""}`}
+                      detail={std.originalUnit ? t("Converted from {{value}} {{unit}}", { value: l.value, unit: l.unit || "?" }) : t(l.panel)}
+                      value={`${std.value} ${std.unit}${f === "high" ? " ↑" : f === "low" ? " ↓" : ""}`}
                       valueTone={f === "high" || f === "low" ? "text-red-600" : undefined}
                       dup={existing?.hasLab(l, e.date)}
                     />

@@ -879,4 +879,7 @@ export const sw: Record<string, string> = {
   "Diabetes clinic review letter": "Barua ya mapitio ya kliniki ya kisukari",
   "Chest X-ray report": "Ripoti ya X-ray ya kifua",
   "Repeat prescription — Metformin, Amlodipine, Atorvastatin": "Agizo la kuendelea — Metformin, Amlodipine, Atorvastatin",
+  // Unit standardisation
+  "Converted from {{value}} {{unit}}": "Imebadilishwa kutoka {{value}} {{unit}}",
+  "The report shows {{value}} {{unit}}. We converted it to {{std}} so all your results use the same unit.": "Ripoti inaonyesha {{value}} {{unit}}. Tumeibadilisha kuwa {{std}} ili matokeo yako yote yatumie kipimo kimoja.",
 };

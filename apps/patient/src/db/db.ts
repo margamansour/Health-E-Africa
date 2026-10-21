@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
+import { standardise } from "@/domain/units";
 import type {
   Allergy,
   Appointment,
@@ -72,10 +73,31 @@ export class HealthDB extends Dexie {
       ruleStatus: "ruleId",
       settings: "key",
     });
+    // v2: convert every saved lab result to the standard unit for its test.
+    this.version(2).upgrade((tx) =>
+      tx
+        .table("labResults")
+        .toCollection()
+        .modify((r: LabResult) => {
+          if (r.originalUnit) return;
+          Object.assign(r, toStandard(r));
+        }),
+    );
   }
 }
 
+/** The standard-unit form of a result (keeps the reported value when it was converted). */
+function toStandard(r: LabResult): Partial<LabResult> {
+  const s = standardise(r.analyte, r.value, r.unit, r.refLow, r.refHigh);
+  return { value: s.value, unit: s.unit, refLow: s.refLow, refHigh: s.refHigh, originalValue: s.originalValue, originalUnit: s.originalUnit };
+}
+
 export const db = new HealthDB();
+
+// Every result saved by any route (scan, typed in, sent by a clinic) is stored in the standard unit.
+db.labResults.hook("creating", (_key, obj) => {
+  if (!obj.originalUnit) Object.assign(obj, toStandard(obj));
+});
 
 // Tables holding health data: every write to these is recorded in the audit log.
 const AUDITED = [

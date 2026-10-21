@@ -14,6 +14,7 @@ import { active, useFormat, useVerifiedRecordIds } from "@/lib/hooks";
 import { ScanUploadSheet } from "@/components/ScanUploadSheet";
 import { SourceDocumentSheet } from "@/components/SourceDocumentSheet";
 import { cn, nowIso, today, uid } from "@/lib/utils";
+import { normUnit, standardUnit } from "@/domain/units";
 
 type View = "table" | "graph";
 
@@ -111,11 +112,13 @@ function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult
     }
     return LAB_GROUPS.filter((g) => byGroup.has(g.key)).map((g) => {
       const rows = byGroup.get(g.key)!;
-      const analytes = [...new Set(rows.map((r) => r.analyte))].sort((x, y) => analyteOrder(x) - analyteOrder(y) || x.localeCompare(y));
+      // A test we can't convert, reported in two different units, gets one row per unit.
+      const keyOf = (r: LabResult) => (standardUnit(r.analyte) ? r.analyte : `${r.analyte}␟${normUnit(r.unit)}`);
+      const analytes = [...new Set(rows.map(keyOf))].sort((x, y) => analyteOrder(x.split("␟")[0]!) - analyteOrder(y.split("␟")[0]!) || x.localeCompare(y));
       const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
-      const latest = (a: string) => rows.filter((r) => r.analyte === a).sort((x, y) => y.date.localeCompare(x.date))[0]!;
+      const latest = (a: string) => rows.filter((r) => keyOf(r) === a).sort((x, y) => y.date.localeCompare(x.date))[0]!;
       const abnormal = analytes.filter((a) => ["high", "low"].includes(flagFor(latest(a)))).length;
-      return { ...g, rows, analytes, dates, latest, abnormal };
+      return { ...g, rows, analytes, dates, latest, abnormal, keyOf };
     });
   }, [results, panelById]);
 
@@ -169,13 +172,13 @@ function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult
                       return (
                         <tr key={a} className="border-t border-ink/5">
                           <td className="sticky left-0 z-10 w-[9.5rem] min-w-[9.5rem] bg-white px-3 py-2">
-                            <span className="block font-semibold leading-tight text-ink">{a}</span>
+                            <span className="block font-semibold leading-tight text-ink">{a.split("␟")[0]}</span>
                             <span className="block whitespace-nowrap text-[11px] text-ink/45">
                               {[ref.unit, range(ref)].filter(Boolean).join(" · ")}
                             </span>
                           </td>
                           {g.dates.map((d) => {
-                            const r = g.rows.find((x) => x.analyte === a && x.date === d);
+                            const r = g.rows.find((x) => g.keyOf(x) === a && x.date === d);
                             const src = r ? panelById.get(r.panelId)?.sourceRecordId : undefined;
                             return (
                               <td key={d} className="whitespace-nowrap px-3 py-2 text-right">
@@ -183,7 +186,7 @@ function GroupedTable({ results, panelById, onOpenSource }: { results: LabResult
                                   <button
                                     type="button"
                                     onClick={() => onOpenSource(r)}
-                                    aria-label={t("{{name}} {{value}} {{unit}}: show source document", { name: a, value: r.value, unit: r.unit })}
+                                    aria-label={t("{{name}} {{value}} {{unit}}: show source document", { name: r.analyte, value: r.value, unit: r.unit })}
                                     className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-4"
                                   >
                                     <ValueCell r={r} />

@@ -51,7 +51,8 @@ async function renderWithHighlight(blob: Blob, result: LabResult): Promise<PageI
     if (!found) {
       const values = page.text.filter((t) => {
         const v = asNumber(t.str.trim().split(/\s+/)[0] ?? "");
-        return !Number.isNaN(v) && Math.abs(v - result.value) < 1e-9;
+        const printed = result.originalValue ?? result.value;
+        return !Number.isNaN(v) && Math.abs(v - printed) < 1e-9;
       });
       const onSameLine = (a: { y: number; h: number }, b: { y: number; h: number }) => Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < Math.max(a.h, b.h) * 0.7;
       const match =
@@ -188,6 +189,16 @@ export function SourceDocumentSheet({ result, panel, onClose }: { result: LabRes
             <span className="ml-1 text-sm font-semibold text-ink/55">{result.unit}</span>
           </p>
         </div>
+
+        {result.originalUnit && (
+          <Notice tone="blue">
+            {t("The report shows {{value}} {{unit}}. We converted it to {{std}} so all your results use the same unit.", {
+              value: result.originalValue,
+              unit: result.originalUnit,
+              std: result.unit,
+            })}
+          </Notice>
+        )}
 
         {record === undefined && <p className="text-sm text-ink/55">{t("Loading…")}</p>}
 
