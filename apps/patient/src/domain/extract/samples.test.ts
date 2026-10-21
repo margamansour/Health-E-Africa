@@ -37,7 +37,7 @@ describe("sample documents", () => {
     console.log(lines.slice(0, 14).join("\n"));
     expect(e.docType).toBe("lab");
     expect(e.facilityId).toBe("fac-003");
-    expect(e.date).toBe("2026-10-14");
+    expect(e.date).toBe("2026-10-13"); // collection date is preferred over the report date
     expect(e.patientMatch).toBe("match");
     expect(e.labs.length).toBe(15);
     expect(e.labs.find((l) => l.analyte === "Haemoglobin")).toMatchObject({ value: 11.4, unit: "g/dL", refLow: 12, refHigh: 17 });

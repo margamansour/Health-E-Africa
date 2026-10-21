@@ -25,7 +25,9 @@ export interface ScanContext {
   profile: Profile | null | undefined;
 }
 
-const MAX_PAGES = 4;
+/** Typed PDFs are quick to read, so read long reports in full; photos/scans are slower to recognise. */
+const MAX_PDF_PAGES = 20;
+const MAX_OCR_PAGES = 4;
 const SIGNATURE_LABEL = /^(signature|signed|sign)\b/i;
 
 function pixels(canvas: HTMLCanvasElement) {
@@ -104,7 +106,8 @@ export async function scanDocument(file: File, ctx: ScanContext, onStage: (s: Sc
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
     const { openPdf, renderPage } = await import("./pdf");
     const doc = await openPdf(file);
-    const count = Math.min(doc.numPages, MAX_PAGES);
+    const count = Math.min(doc.numPages, MAX_PDF_PAGES);
+    let ocrPagesDone = 0;
     for (let n = 1; n <= count; n++) {
       onStage("reading", (n - 1) / count);
       const page = await renderPage(doc, n);
@@ -119,7 +122,7 @@ export async function scanDocument(file: File, ctx: ScanContext, onStage: (s: Sc
         const boxes: Box[] = page.text.map((t) => ({ x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }));
         const labels = page.text.filter((t) => SIGNATURE_LABEL.test(t.str.trim())).map((t) => ({ x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }));
         pages.push({ lines: buildLines(page.text), stamp: detectStamp(px).found, signature: detectSignature(px, boxes, labels).found, wordCount: chars });
-      } else {
+      } else if (ocrPagesDone++ < MAX_OCR_PAGES) {
         // A scanned PDF (just an image): recognise the text.
         method = "ocr";
         onStage("recognising", 0);

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
-import { Activity, AlertTriangle, FileImage, FileText, FlaskConical, Inbox, Paperclip, Pill, Plus, Search, Syringe, Upload } from "lucide-react";
+import { Activity, AlertTriangle, ScanText, FileImage, FileText, FlaskConical, Inbox, Paperclip, Pill, Plus, Search, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
 import type { HealthRecord, RecordCategory } from "@/db/types";
 import { Badge, Button, Card, Chips, ConfirmDialog, EmptyState, Input, KeyValue, Sheet } from "@/components/ui";
@@ -23,7 +23,8 @@ export function RecordsPage() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<"all" | RecordCategory>("all");
   const [selected, setSelected] = useState<HealthRecord | null>(null);
-  const uploadOpen = params.get("add") === "1";
+  const [rescan, setRescan] = useState<{ recordId: string; file: File } | null>(null);
+  const uploadOpen = params.get("add") === "1" || !!rescan;
 
   const list = useMemo(
     () =>
@@ -103,13 +104,29 @@ export function RecordsPage() {
           ))
         )}
       </Page>
-      <ScanUploadSheet open={uploadOpen} onClose={() => setParams({}, { replace: true })} />
-      <RecordDetail record={selected} onClose={() => setSelected(null)} />
+      <ScanUploadSheet
+        open={uploadOpen}
+        rescan={rescan}
+        onClose={() => {
+          setRescan(null);
+          setParams({}, { replace: true });
+        }}
+      />
+      <RecordDetail
+        record={selected}
+        onClose={() => setSelected(null)}
+        onRescan={async (r) => {
+          const f = r.fileId ? await db.files.get(r.fileId) : undefined;
+          if (!f) return;
+          setSelected(null);
+          setRescan({ recordId: r.id, file: new File([f.blob], f.name, { type: f.type }) });
+        }}
+      />
     </>
   );
 }
 
-function RecordDetail({ record, onClose }: { record: HealthRecord | null; onClose: () => void }) {
+function RecordDetail({ record, onClose, onRescan }: { record: HealthRecord | null; onClose: () => void; onRescan: (r: HealthRecord) => void }) {
   const { t } = useTranslation();
   const fmt = useFormat();
   const [url, setUrl] = useState<string | null>(null);
@@ -143,6 +160,12 @@ function RecordDetail({ record, onClose }: { record: HealthRecord | null; onClos
           <Button variant="ghost" className="text-red-600" onClick={() => setConfirm(true)}>
             {t("Remove")}
           </Button>
+          {record.fileId && (record.fileType === "application/pdf" || record.fileType?.startsWith("image/")) && (
+            <Button variant="secondary" onClick={() => onRescan(record)}>
+              <ScanText className="h-4 w-4" />
+              {t("Scan again")}
+            </Button>
+          )}
           {url && (
             <a href={url} target="_blank" rel="noreferrer" className="flex flex-1">
               <Button className="flex-1">{t("Open file")}</Button>

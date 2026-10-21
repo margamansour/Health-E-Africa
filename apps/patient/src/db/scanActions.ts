@@ -50,8 +50,10 @@ export async function saveScannedRecord(input: {
   verification?: Verification;
   scannedText?: string;
   selected: ScanSelection;
+  /** Re-scanning a record that's already saved: update it instead of adding a new one. */
+  existingRecordId?: string;
 }): Promise<{ recordId: string; added: number }> {
-  const recordId = await addRecord({
+  const recordId = input.existingRecordId ?? (await addRecord({
     category: input.category,
     title: input.title,
     date: input.date,
@@ -60,7 +62,18 @@ export async function saveScannedRecord(input: {
     file: input.file,
     verification: input.verification,
     scannedText: input.scannedText,
-  });
+  }));
+  if (input.existingRecordId) {
+    await db.records.update(recordId, {
+      category: input.category,
+      title: input.title,
+      date: input.date,
+      facilityName: input.facilityName,
+      notes: input.notes,
+      verification: input.verification,
+      scannedText: input.scannedText,
+    });
+  }
   const ex = await existingFor();
   const created = nowIso();
   const s = input.selected;

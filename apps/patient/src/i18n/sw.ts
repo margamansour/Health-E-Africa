@@ -828,6 +828,12 @@ export const sw: Record<string, string> = {
   "From an unverified document": "Kutoka hati isiyothibitishwa",
   "Verified document added": "Hati iliyothibitishwa imeongezwa",
   "Document added": "Hati imeongezwa",
+  "Scan again": "Changanua tena",
+  "This looks like a lab report, but we couldn't read its results table. You can add the results yourself on the Results page.":
+    "Hii inaonekana kuwa ripoti ya maabara, lakini hatukuweza kusoma jedwali la matokeo. Unaweza kuongeza matokeo mwenyewe kwenye ukurasa wa Matokeo.",
+  "Biochemistry": "Biokemia",
+  "Iron studies": "Vipimo vya chuma mwilini",
+  "Vitamins": "Vitamini",
 
   // Seeded sample data
   "Diabetes clinic review letter": "Barua ya mapitio ya kliniki ya kisukari",

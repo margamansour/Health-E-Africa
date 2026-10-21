@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
@@ -29,8 +30,9 @@ const STAGE_TEXT: Record<ScanStage, string> = {
 type Step = "pick" | "scanning" | "review";
 type Group = keyof ScanSelection;
 
-export function ScanUploadSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ScanUploadSheet({ open, onClose, rescan }: { open: boolean; onClose: () => void; rescan?: { recordId: string; file: File } | null }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const fmt = useFormat();
   const profile = useProfile();
   const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? [];
@@ -53,12 +55,18 @@ export function ScanUploadSheet({ open, onClose }: { open: boolean; onClose: () 
     setScanError(null);
     setForm({ title: "", category: "letter", date: today(), facilityName: "", notes: "" });
     setKeep({});
-  }, [open]);
+    if (rescan) void scanFile(rescan.file);
+    // Start once per opening.
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = async (fl: FileList | null) => {
     const f = fl?.[0];
     if (!f) return;
     if (f.size > MAX_FILE) return toast.error(t("File is too large (max 15 MB)"));
+    await scanFile(f);
+  };
+
+  const scanFile = async (f: File) => {
     setFile(f);
     setStep("scanning");
     setScanError(null);
@@ -117,6 +125,7 @@ export function ScanUploadSheet({ open, onClose }: { open: boolean; onClose: () 
         verification: scan?.verification,
         scannedText: scan?.text,
         selected: selection,
+        existingRecordId: rescan?.recordId,
       });
       toast.success(res.added ? t("Record saved and {{count}} item(s) added", { count: res.added }) : t("Record saved"));
       onClose();
@@ -132,7 +141,7 @@ export function ScanUploadSheet({ open, onClose }: { open: boolean; onClose: () 
     <Sheet
       open={open}
       onClose={onClose}
-      title={step === "review" ? t("Check and save") : t("Upload a record")}
+      title={step === "review" ? t("Check and save") : rescan ? t("Scan again") : t("Upload a record")}
       footer={
         step === "review" ? (
           <Button className="w-full" disabled={!form.title.trim() || busy} onClick={() => void save()}>
@@ -231,6 +240,14 @@ export function ScanUploadSheet({ open, onClose }: { open: boolean; onClose: () 
             <Field label={t("Hospital or clinic")}>{(id) => <Input id={id} value={form.facilityName} onChange={(ev) => setForm({ ...form, facilityName: ev.target.value })} />}</Field>
           </div>
 
+          {e && e.docType === "lab" && e.labs.length === 0 && (
+            <Notice tone="amber" icon={<FlaskConical className="h-4 w-4" />}>
+              {t("This looks like a lab report, but we couldn't read its results table. You can add the results yourself on the Results page.")}{" "}
+              <a href="#" onClick={(ev) => { ev.preventDefault(); onClose(); navigate("/results?add=1"); }} className="font-bold underline">
+                {t("Add results")}
+              </a>
+            </Notice>
+          )}
           {e && extractionCount(e) > 0 ? (
             <div className="space-y-3">
               <div>

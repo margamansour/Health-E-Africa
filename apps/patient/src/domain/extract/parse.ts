@@ -93,9 +93,9 @@ export function findDate(s: string): string | undefined {
   if (m) return validDate(+m[1]!, +m[2]!, +m[3]!);
   m = s.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/);
   if (m) return validDate(+m[3]!, +m[2]!, +m[1]!);
-  m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})\b/i);
+  m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?[\s/.-]+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?[\s/.-]+(\d{4}|\d{2})\b/i);
   if (m) return validDate(+m[3]!, MONTHS.indexOf(m[2]!.toLowerCase()) + 1, +m[1]!);
-  m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/i);
+  m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[\s/.-]+(\d{1,2})(?:st|nd|rd|th)?,?[\s/.-]+(\d{4})\b/i);
   if (m) return validDate(+m[3]!, MONTHS.indexOf(m[1]!.toLowerCase()) + 1, +m[2]!);
   return undefined;
 }
@@ -120,7 +120,7 @@ function cells(line: string) {
   const out: string[] = [];
   for (const p of parts) {
     const prev = out[out.length - 1];
-    if (prev && /:\s*$/.test(prev)) out[out.length - 1] = `${prev} ${p}`;
+    if (prev && (/:\s*$/.test(prev) || /^:/.test(p))) out[out.length - 1] = `${prev} ${p}`;
     else out.push(p);
   }
   return out;
@@ -184,30 +184,33 @@ function sectionise(lines: string[]): SectionLine[] {
 
 function documentDate(lines: string[]): string | undefined {
   const isDob = (l: string) => /\b(dob|d\.o\.b|date of birth|born|birth)\b/i.test(l);
-  // 1. A line labelled "Date", "Reported" or "Date of report".
-  for (const l of lines) {
-    if (isDob(l)) continue;
-    for (const part of cells(l)) {
-      const m = part.match(/\b(date(?: of (?:report|issue|discharge|visit))?|reported|report date|date reported|discharged)\s*:\s*(.+)$/i);
-      if (m) {
-        const d = findDate(m[2]!);
+  const labelled = (re: RegExp) => {
+    for (const l of lines)
+      for (const part of cells(l)) {
+        if (isDob(part)) continue;
+        const m = part.match(re);
+        const d = m ? findDate(m[1]!) : undefined;
         if (d) return d;
       }
-    }
-  }
-  // 2. The first date that isn't a date of birth or admission date.
-  for (const l of lines) {
-    if (isDob(l) || /\badmitted\b/i.test(l)) continue;
-    const d = findDate(l);
-    if (d) return d;
-  }
-  return undefined;
+    return undefined;
+  };
+  return (
+    // For results, the date the sample was taken matters most.
+    labelled(/\b(?:collect(?:ion|ed)(?: date)?|sample (?:date|taken)|specimen date|date (?:collected|of collection))\s*:\s*(.+)$/i) ??
+    labelled(/\b(?:date(?: of (?:report|issue|discharge|visit))?|registration date|reported|report date|date reported|reporting date|discharged)\s*:\s*(.+)$/i) ??
+    // Otherwise the first date that isn't a date of birth or admission date.
+    lines
+      .flatMap((l) => cells(l))
+      .filter((c) => !isDob(c) && !/\badmitted\b/i.test(c))
+      .map((c) => findDate(c))
+      .find(Boolean)
+  );
 }
 
-function labelValue(lines: string[], label: RegExp): string | undefined {
+function labelValue(lines: string[], label: RegExp, anywhere = false): string | undefined {
   for (const l of lines) {
     for (const part of cells(l)) {
-      const m = part.match(new RegExp(`^(?:${label.source})\\s*:\\s*(.+)$`, "i"));
+      const m = part.match(new RegExp(`${anywhere ? "\\b" : "^"}(?:${label.source})\\s*:\\s*(.+)$`, "i"));
       if (m) return cutAtNextLabel(m[1]!);
     }
   }
@@ -256,37 +259,115 @@ function patientMatch(name: string | undefined, dob: string | undefined, profile
 
 const ALIASES = ANALYTES.flatMap((a) => a.aliases.map((alias) => ({ alias, def: a }))).sort((x, y) => y.alias.length - x.alias.length);
 
+/** Turn "250,000" or "13,5" or "<5" into a number. */
+function toNumber(raw: string): number {
+  const t = raw.replace(/[<>≤≥\s*]/g, "");
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) return Number(t.replace(/,/g, ""));
+  return Number(t.replace(",", "."));
+}
+
 function parseRange(s: string): { refLow?: number; refHigh?: number } {
-  let m = s.match(/(-?\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(-?\d+(?:\.\d+)?)/);
+  const t = s.replace(/(\d),(\d{3})\b/g, "$1$2");
+  let m = t.match(/(-?\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(-?\d+(?:\.\d+)?)/);
   if (m) return { refLow: +m[1]!, refHigh: +m[2]! };
-  m = s.match(/(?:<|≤|less than|up to)\s*=?\s*(\d+(?:\.\d+)?)/i);
+  m = t.match(/(?:<|≤|less than|up to|below)\s*=?\s*(\d+(?:\.\d+)?)/i);
   if (m) return { refHigh: +m[1]! };
-  m = s.match(/(?:>|≥|more than|above)\s*=?\s*(\d+(?:\.\d+)?)/i);
+  m = t.match(/(?:>|≥|more than|above|greater than)\s*=?\s*(\d+(?:\.\d+)?)/i);
   if (m) return { refLow: +m[1]! };
   return {};
 }
 
-function parseLabLine(line: string, strict: boolean): ExtractedLab | undefined {
-  const plain = line.replace(/\s*\|\s*/g, " | ");
-  const lower = plain.toLowerCase();
-  const hit = ALIASES.find(({ alias }) => new RegExp(`^${escapeRe(alias)}(?![a-z])`, "i").test(lower));
-  if (!hit) return undefined;
-  const rest = plain.slice(hit.alias.length).replace(/^[\s:|-]+/, "");
-  // Value: the first number (optionally "<" or ">").
-  const vm = rest.match(/^(?:of\s+)?([<>]?\s*-?\d+(?:[.,]\d+)?)/i);
-  if (!vm) return undefined;
-  const value = Number(vm[1]!.replace(/[<>\s]/g, "").replace(",", "."));
+const VALUE_TOKEN = /^[<>≤≥]?\d{1,3}(?:,\d{3})+(?:\.\d+)?\*?$|^[<>≤≥]?\d+(?:[.,]\d+)?\*?$/;
+const FLAG_TOKEN = /^(h|l|hh|ll|high|low|a|n|\*+|↑|↓|abn|abnormal|normal)$/i;
+const UNIT_TOKEN = /^(?:x\s?10\S*|[a-zµμ%][a-zµμ%/^.\d³²·-]*|\/[a-zµμ][a-zµμ/^.\d³²-]*)$/i;
+/** Words that start a line but are never test names. */
+const NOT_A_TEST = /^(date|age|sex|lab|no|tel|phone|page|time|patient|name|sample|specimen|ref|dob|id|bp|blood pressure|weight|height|temp|pulse|collected|received|reported|printed|ward|bed|doctor|dr|clinic|invoice|amount|total amount|receipt)\b/i;
+
+export interface LabParseOptions {
+  /** Require a reference range (used outside lab reports, so prose isn't misread). */
+  strict: boolean;
+  /** Panel name to use for tests that aren't in the dictionary (the current section heading). */
+  panel?: string;
+}
+
+/**
+ * Read one table row of a lab report. Handles the common layouts:
+ *   "Haemoglobin (Hb) | 13.5 | g/dL | 12.0 - 16.0"
+ *   "HAEMOGLOBIN | 10.2 | L | g/dL | 11.5 - 15.5"   (flag before unit)
+ *   "S. Creatinine 88 umol/L 62-106"
+ *   "Platelets 250,000 /uL 150,000 - 450,000"
+ * Tests not in the dictionary are kept when they have a value and a reference range.
+ */
+export function parseLabLine(line: string, opts: LabParseOptions): ExtractedLab | undefined {
+  const tokens = line.replace(/\|/g, " | ").split(/\s+/).filter((t) => t && t !== "|");
+  const vi = tokens.findIndex((t, i) => i > 0 && VALUE_TOKEN.test(t));
+  if (vi < 1) return undefined;
+  const nameRaw = tokens
+    .slice(0, vi)
+    .join(" ")
+    .replace(/^[^a-z0-9(]+/i, "")
+    .replace(/\s+([,/])/g, "$1")
+    .replace(/[\s:,/\-–]+$/, "")
+    .trim();
+  if (nameRaw.length < 2 || nameRaw.length > 48 || NOT_A_TEST.test(nameRaw) || !/[a-z]/i.test(nameRaw)) return undefined;
+  if (nameRaw.split(" ").length > 6) return undefined;
+  const value = toNumber(tokens[vi]!);
   if (Number.isNaN(value)) return undefined;
-  const after = rest.slice(vm[0].length).trim();
-  const unitMatch = after.match(/^\|?\s*((?:x\s?10\^?\d+\/[a-z]+)|[a-zµ%/.0-9^]+(?:\/[a-z0-9.^]+)?)/i);
-  let unit = unitMatch && !/^\d/.test(unitMatch[1]!) ? unitMatch[1]! : "";
-  if (/^(h|l|high|low)$/i.test(unit)) unit = "";
-  const remainder = after.slice(unitMatch && unit ? unitMatch[0].length : 0);
-  const range = parseRange(remainder);
-  // In letters, only accept table-like lines with a reference range.
-  if (strict && range.refLow == null && range.refHigh == null) return undefined;
-  if (plain.split(/\s+/).length > 14) return undefined;
-  return { analyte: hit.def.name, value, unit: unit.replace(/^umol/i, "µmol"), ...range, panel: hit.def.panel };
+
+  const rest = tokens.slice(vi + 1);
+  let unit = "";
+  for (const t of rest.slice(0, 3)) {
+    if (FLAG_TOKEN.test(t)) continue;
+    if (VALUE_TOKEN.test(t) || /^[<>≤≥(\[-]/.test(t)) break;
+    if (UNIT_TOKEN.test(t) && t.length <= 16) unit = t;
+    break;
+  }
+  const range = parseRange(rest.join(" "));
+  const hasRange = range.refLow != null || range.refHigh != null;
+
+  // Known test? Look for an alias anywhere in the name, including "(Hb)"-style abbreviations.
+  const lowerName = ` ${nameRaw.toLowerCase().replace(/[().,:\[\]]/g, " ").replace(/\s+/g, " ")} `;
+  // Ratios and derived values ("BUN/Creatinine ratio") are tests in their own right, not the test they mention.
+  const derived = /\bratio\b|\bindex\b/.test(lowerName);
+  // Urine and stool tests share names with blood tests (RBC, glucose, protein): keep them separate.
+  const nonBlood = /urin|microscop|physical exam|chemical exam|stool|faec/i.test(opts.panel ?? "");
+  const hit = derived || nonBlood ? undefined : ALIASES.find(({ alias }) => new RegExp(`[^a-z0-9]${escapeRe(alias)}[^a-z0-9]`).test(lowerName));
+  if (opts.strict && !hasRange) return undefined;
+  if (!hit && !hasRange) return undefined;
+
+  const cleaned = nameRaw
+    .replace(/\s*\([^)]*\)\s*/g, " ")
+    // Sample type after the name: "Globulin, Serum", "Absolute basophil count, EDTA Blood"
+    .replace(/,\s*(serum|plasma|fluoride plasma|edta( whole)? blood|whole blood|blood|urine|random urine)\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const analyte = hit
+    ? hit.def.name
+    : /^ph$/i.test(cleaned)
+      ? "pH"
+      : cleaned === cleaned.toUpperCase() && cleaned.length > 5
+        ? capitalise(titleCase(cleaned).toLowerCase())
+        : capitalise(cleaned);
+  return {
+    analyte,
+    value,
+    unit: unit.replace(/^u(?=mol|g\b|g\/)/i, "µ"),
+    ...range,
+    panel: hit ? hit.def.panel : opts.panel ?? "Other tests",
+  };
+}
+
+/** Lines like "HAEMATOLOGY" or "Lipid Profile" that name the panel of the rows below. */
+function panelHeading(line: string): string | undefined {
+  const plain = line.replace(/\s*\|\s*/g, " ").replace(/:$/, "").trim();
+  if (plain.length < 4 || plain.length > 40 || /\d/.test(plain)) return undefined;
+  if (/\b(test|result|unit|range|flag|reference|patient|name|date|report)\b/i.test(plain)) return undefined;
+  // Capitals alone isn't enough: package names like "HEALTHSECUREPACKAGE" aren't panels.
+  const isCaps = plain === plain.toUpperCase() && /[A-Z]{4,}/.test(plain) && plain.includes(" ") && plain.length <= 28;
+  // Method labels sit where headings do ("FLOWCYTOMETRY BY LASER", "SPECTROPHOTOMETRIC").
+  if (/flowcytometr|spectrophotometr|colorimetr|nephelometr|hexokinase|hplc|biochemical|immunoassay|clia|eclia|\bby\b|method/i.test(plain)) return undefined;
+  const isPanel = /(haematology|hematology|biochemistry|chemistry|profile|function|count|panel|serology|immunology|hormones?|electrolytes|urinalysis|lipids?|thyroid|vitamins?|iron studies|diabetes|tests)$/i.test(plain);
+  return isCaps || isPanel ? titleCase(plain) : undefined;
 }
 
 // ---------- Conditions ----------
@@ -430,11 +511,13 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
   const date = documentDate(lines);
   const facility = matchFacility(text, lines, ctx.facilities);
   const patientName = labelValue(lines, /patient(?:'s)?\s*name|name of patient|patient|name/);
-  const dobRaw = labelValue(lines, /dob|d\.o\.b\.?|date of birth/);
+  const dobRaw = labelValue(lines, /dob|d\.o\.b\.?|date of birth/, true);
   const patientDob = dobRaw ? findDate(dobRaw) : undefined;
 
   const sectioned = sectionise(lines);
-  const looksLikeLab = /laboratory|lab no\b|reference range|ref\.? range/i.test(text);
+  // Is this a lab report? Either it says so, or several rows already read as results with ranges.
+  const rowsWithRanges = lines.filter((l) => parseLabLine(l, { strict: true })).length;
+  const looksLikeLab = rowsWithRanges >= 3 || /laborator|lab\s*no\b|reference|ref\.?\s*(range|interval)|normal (range|values)|haematology|hematology|biochemistry|specimen/i.test(text);
 
   const labs: ExtractedLab[] = [];
   const conditions: ExtractedCondition[] = [];
@@ -445,15 +528,20 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
   const notes: string[] = [];
   let noKnownAllergies = false;
 
+  let panel: string | undefined;
   for (const { section, text: line } of sectioned) {
     const plain = line.replace(/\s*\|\s*/g, " ");
 
-    if (section === "other" || section === "notes") {
-      const lab = parseLabLine(line, !looksLikeLab);
-      if (lab) {
-        if (!labs.some((l) => l.analyte === lab.analyte)) labs.push(lab);
-        continue;
-      }
+    // Result rows can appear under any heading (e.g. after "Clinical diagnosis:"), so try them first.
+    const heading = looksLikeLab ? panelHeading(line) : undefined;
+    if (heading) {
+      panel = heading;
+      continue;
+    }
+    const lab = parseLabLine(line, { strict: !looksLikeLab, panel });
+    if (lab) {
+      if (!labs.some((l) => l.analyte === lab.analyte)) labs.push(lab);
+      continue;
     }
 
     switch (section) {
