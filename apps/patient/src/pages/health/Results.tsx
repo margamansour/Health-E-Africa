@@ -10,7 +10,8 @@ import type { LabPanel, LabResult } from "@/db/types";
 import { Badge, Button, Card, EmptyState, Field, Input, Notice, Select, Sheet, Tabs, Textarea } from "@/components/ui";
 import { Page, PageHeader } from "@/components/layout";
 import { flagFor, PANEL_TEMPLATES, parseResultsText, type ParsedRow } from "@/domain/labs";
-import { active, useFormat } from "@/lib/hooks";
+import { active, useFormat, useVerifiedRecordIds } from "@/lib/hooks";
+import { VerifiedBadge } from "@/components/VerificationCard";
 import { cn, nowIso, today, uid } from "@/lib/utils";
 
 type View = "panels" | "table" | "graph";
@@ -88,6 +89,7 @@ function range(r: Pick<LabResult, "refLow" | "refHigh">) {
 
 function PanelsView({ panels, results }: { panels: LabPanel[]; results: LabResult[] }) {
   const { t } = useTranslation();
+  const verifiedIds = useVerifiedRecordIds();
   const fmt = useFormat();
   return (
     <>
@@ -111,6 +113,7 @@ function PanelsView({ panels, results }: { panels: LabPanel[]; results: LabResul
                     {t("From clinic")}
                   </Badge>
                 )}
+                {p.sourceRecordId && <VerifiedBadge verified={verifiedIds.has(p.sourceRecordId)} />}
               </div>
             </div>
             <table className="mt-2 w-full text-sm">

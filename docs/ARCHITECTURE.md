@@ -60,7 +60,7 @@ markets, and health-data compliance.
 | Forms / validation | react-hook-form + **zod** (schemas shared with the backend) | One source of truth for validation. |
 | Push notifications | Web Push (PWA), then FCM/APNs via Capacitor | |
 | SMS / WhatsApp fallback | Africa's Talking or Twilio | Many users have patchy data or turn notifications off. |
-| Document text extraction | OCR plus LLM extraction, **always reviewed by the user** before saving | Powers "import lab results" from a photo or PDF. ⚠️ Most OCR and AI services run outside Kenya. Use a self-hosted OCR model in Kenya, or get explicit consent and cross-border safeguards first (§7.1). |
+| Document text extraction | **On-device**: pdf.js for typed PDFs, Tesseract OCR for photos and scans, rule-based extraction; **always reviewed by the user** before saving | Nothing leaves the phone, so no cross-border transfer (§7.1). Verified-source checks: licensed clinic, date, stamp or signature, printed, patient match. |
 | Kenya specifics | M-Pesa (Daraja API) for payments; **SHA** (Social Health Authority, replaced NHIF in 2024) plus private insurers in the insurance list; facility directory seeded from the **Kenya Master Health Facility List**; **KEPI** vaccine schedule; English + Kiswahili | |
 | Maps / distance | PostGIS in Postgres, with a map tile provider | Distance filtering in SQL. |
 | Payments (later) | Mobile money (M-Pesa, MTN MoMo), Flutterwave or Paystack | For delivery fees and co-pays. |
@@ -444,7 +444,7 @@ tested while facilities and pharmacies are being signed up.
 | 3. Calendar & Reminders | ✅ Month, agenda and health-check views; Kenyan rules engine; in-app and browser notifications (no health details shown) |
 | 4. Appointments | ✅ Patient side, plus demo buttons that stand in for the clinic. ⏳ Partner Portal |
 | 5. Prescriptions | ✅ Patient side (repeat/acute, prescription check, allergy warnings, delivery tracking), plus demo buttons for the pharmacy. ⏳ Pharmacy Portal |
-| 6. Hardening | ⏳ Backend, OCR import, Capacitor, offline, SMS/WhatsApp, pen test |
+| 6. Hardening | ✅ On-device document scanning (PDF text + OCR) with verified/unverified source checks; single-file offline demo. ⏳ Backend, Capacitor, SMS/WhatsApp, pen test |
 
 ### Compliance track (runs alongside the build)
 

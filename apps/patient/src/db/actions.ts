@@ -216,6 +216,8 @@ export async function addRecord(input: {
   notes?: string;
   file?: File;
   source?: HealthRecord["source"];
+  verification?: HealthRecord["verification"];
+  scannedText?: string;
 }): Promise<string> {
   const id = uid();
   let fileId: string | undefined;
@@ -236,6 +238,8 @@ export async function addRecord(input: {
     fileType: input.file?.type,
     createdAt: nowIso(),
     seenAt: input.source === "facility" ? undefined : nowIso(),
+    verification: input.verification,
+    scannedText: input.scannedText,
   });
   return id;
 }

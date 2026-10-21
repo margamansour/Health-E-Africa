@@ -201,7 +201,14 @@ export function SharedSummaryPage() {
                 <li key={r.id} className="flex items-start gap-2">
                   <FileText className="mt-0.5 h-4 w-4 text-ink/40" />
                   <div>
-                    <p className="font-medium">{r.title}</p>
+                    <p className="font-medium">
+                      {r.title}{" "}
+                      {(r.source === "facility" || r.verification?.status === "verified") ? (
+                        <span className="ml-1 rounded-full bg-mint px-2 py-0.5 text-[11px] font-bold text-emerald-900">✓ {t("Verified source")}</span>
+                      ) : r.verification ? (
+                        <span className="ml-1 rounded-full bg-butter px-2 py-0.5 text-[11px] font-bold">{t("Unverified")}</span>
+                      ) : null}
+                    </p>
                     <p className="text-xs text-ink/55">
                       {fmt.date(r.date)} {r.facilityName && `· ${r.facilityName}`}
                     </p>

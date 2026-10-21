@@ -14,7 +14,7 @@ The patient app works end to end in **demo mode**. All data is saved in the brow
 | Home | Health passport card, profile completeness, allergies, medicines, conditions, blood group, quick actions, upcoming events, latest updates |
 | Medical summary | View and edit conditions, allergies and medicines (with allergy warnings); recent labs; immunisations |
 | Sharing | Choose what to share, who with, and for how long → consent → link + QR code → what the clinic sees → access log → stop sharing |
-| Records | Upload a photo or PDF, categories, search, "received from clinic" badge |
+| Records | Upload a photo or PDF → **scanned on the phone** → diagnoses, medicines, allergies, results, vaccines and follow-ups found and sorted for review → **verified / unverified source** badge; search includes the document text |
 | Results | Panels, table and trend graph; manual entry with panel templates; paste/import with a review step; out-of-range flags |
 | Immunisations | Dose series, batch, given, due and overdue tracking |
 | Find care | Licensed facilities only, search, filters (service, insurance, distance, rating), distance from GPS or county, facility details, choose your pharmacy |
@@ -24,6 +24,23 @@ The patient app works end to end in **demo mode**. All data is saved in the brow
 | Settings | Notification preferences, English / Kiswahili, consents, activity log, data download, log out, close account (records kept 20 years) |
 
 **Simulated in demo mode:** the clinic and pharmacy side. Yellow "Demo: act as the facility / pharmacy" buttons stand in for the Partner Portal, which isn't built yet.
+
+## Document scanning and verification
+
+Uploading a record scans it **on the device**; nothing is sent to a server, which keeps health data in Kenya as the legal advice requires.
+
+- **Typed PDFs**: text is read directly (pdf.js).
+- **Photos and scanned PDFs**: text is recognised with Tesseract (on-device OCR). The engine (~3 MB) and English data (~3 MB) only download the first time someone scans a photo.
+- **Finding information** (`domain/extract/parse.ts`): document type, date, clinic, patient name and date of birth, signer, registration number, conditions, allergies, medicines (dose, frequency, course length, changes), lab results with ranges, vaccines and follow-ups. The patient reviews and unticks anything before it is saved. Duplicates are skipped and changed doses shown as updates.
+- **Verified source** (`domain/extract/verify.ts`) requires all of: printed (not handwritten), a licensed clinic from the directory, a date, a stamp or signature, and no mismatch with the patient's name or date of birth. Anything else is saved as **unverified**.
+  - Stamp: a block of coloured (blue, violet or red) ink of stamp size and shape (`domain/extract/marks.ts`).
+  - Signature: pen strokes next to or above a "Signature" / "Signed" label, ignoring printed text.
+  - Handwriting: letters that wobble off a straight baseline or vary in height, or low recognition confidence (`domain/extract/handwriting.ts`).
+- Items keep a link to their source document, so the summary, results and shared view show a ✓ for information from verified documents.
+
+These checks look at the document's markings; they don't prove it is genuine. Results that clinics send directly through the app (later, via the national data exchange) are verified by that route.
+
+Try it with the files in [`samples/`](samples/).
 
 ## Run it
 

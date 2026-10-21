@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useSearchParams } from "react-router";
-import { Activity, AlertTriangle, ChevronRight, Eye, Pencil, Pill, Plus, Share2, ShieldOff, Syringe, FlaskConical, Phone } from "lucide-react";
+import { Activity, BadgeCheck, AlertTriangle, ChevronRight, Eye, Pencil, Pill, Plus, Share2, ShieldOff, Syringe, FlaskConical, Phone } from "lucide-react";
 import { db, logAudit } from "@/db/db";
 import type { Allergy, Condition, Medication } from "@/db/types";
 import { Badge, Button, Card, ConfirmDialog, EmptyState, KeyValue, SectionTitle, Tabs } from "@/components/ui";
 import { Page, PageHeader } from "@/components/layout";
 import { AllergySheet, ConditionSheet, MedicationSheet } from "@/components/ClinicalForms";
 import { ShareSheet, SECTION_LABELS } from "@/components/ShareSheet";
-import { active, useFormat, useProfile } from "@/lib/hooks";
+import { active, useFormat, useProfile, useVerifiedRecordIds } from "@/lib/hooks";
 import { ageOn, today } from "@/lib/utils";
 import { flagFor } from "@/domain/labs";
 import { immunisationState } from "@/domain/reminders";
@@ -69,6 +69,8 @@ function SummaryContent() {
     return results.filter((r) => (seen.has(r.analyte) ? false : (seen.add(r.analyte), true))).slice(0, 6);
   }, []);
 
+  const verifiedIds = useVerifiedRecordIds();
+  const src = (x: { sourceRecordId?: string }) => (x.sourceRecordId ? (verifiedIds.has(x.sourceRecordId) ? "verified" : "unverified") : undefined);
   const [editCondition, setEditCondition] = useState<Condition | null | undefined>(undefined);
   const [editAllergy, setEditAllergy] = useState<Allergy | null | undefined>(undefined);
   const [editMed, setEditMed] = useState<Medication | null | undefined>(undefined);
@@ -125,7 +127,7 @@ function SummaryContent() {
       ) : (
         <Card className="divide-y divide-ink/5 p-0">
           {allergies.map((a) => (
-            <Row key={a.id} onClick={() => setEditAllergy(a)} icon={<AlertTriangle className="h-4 w-4 text-red-600" />} title={a.substance} subtitle={a.reaction}>
+            <Row key={a.id} source={src(a)} onClick={() => setEditAllergy(a)} icon={<AlertTriangle className="h-4 w-4 text-red-600" />} title={a.substance} subtitle={a.reaction}>
               <Badge tone={a.status !== "active" ? "slate" : a.severity === "severe" ? "red" : a.severity === "moderate" ? "amber" : "slate"}>
                 {a.status !== "active" ? t("Inactive") : t(a.severity === "severe" ? "Severe" : a.severity === "moderate" ? "Moderate" : "Mild")}
               </Badge>
@@ -143,6 +145,7 @@ function SummaryContent() {
           {[...activeConditions, ...pastConditions].map((c) => (
             <Row
               key={c.id}
+              source={src(c)}
               onClick={() => setEditCondition(c)}
               icon={<Activity className="h-4 w-4 text-violet-600" />}
               title={c.name}
@@ -161,7 +164,7 @@ function SummaryContent() {
       ) : (
         <Card className="divide-y divide-ink/5 p-0">
           {currentMeds.map((m) => (
-            <Row key={m.id} onClick={() => setEditMed(m)} icon={<Pill className="h-4 w-4 text-sky-600" />} title={`${m.name} ${m.dose}`} subtitle={m.frequency}>
+            <Row key={m.id} source={src(m)} onClick={() => setEditMed(m)} icon={<Pill className="h-4 w-4 text-sky-600" />} title={`${m.name} ${m.dose}`} subtitle={m.frequency}>
               <Badge tone={m.type === "repeat" ? "blue" : "slate"}>{t(m.type === "repeat" ? "Repeat" : "Acute")}</Badge>
             </Row>
           ))}
@@ -206,7 +209,7 @@ function SummaryContent() {
           {immunisations.slice(0, 5).map((i) => {
             const st = immunisationState(i, tk);
             return (
-              <Row key={i.id} icon={<Syringe className="h-4 w-4 text-amber-600" />} title={`${i.vaccine}`} subtitle={`${t("Dose {{n}} of {{total}}", { n: i.doseNumber, total: i.seriesTotal })} · ${fmt.date(i.dateGiven ?? i.dueDate)}`}>
+              <Row key={i.id} source={src(i)} icon={<Syringe className="h-4 w-4 text-amber-600" />} title={`${i.vaccine}`} subtitle={`${t("Dose {{n}} of {{total}}", { n: i.doseNumber, total: i.seriesTotal })} · ${fmt.date(i.dateGiven ?? i.dueDate)}`}>
                 <Badge tone={st === "given" ? "green" : st === "overdue" ? "red" : "amber"}>{t(st === "given" ? "Given" : st === "overdue" ? "Overdue" : st === "due" ? "Due" : "Scheduled")}</Badge>
               </Row>
             );
@@ -233,13 +236,33 @@ function AddButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function Row({ icon, title, subtitle, children, onClick }: { icon: React.ReactNode; title: string; subtitle?: string; children?: React.ReactNode; onClick?: () => void }) {
+function Row({
+  icon,
+  title,
+  subtitle,
+  children,
+  onClick,
+  source,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+  onClick?: () => void;
+  /** Where the item came from: a verified document, an unverified one, or typed in. */
+  source?: "verified" | "unverified";
+}) {
+  const { t } = useTranslation();
   const Comp = onClick ? "button" : "div";
   return (
     <Comp type={onClick ? "button" : undefined} onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left">
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{title}</span>
+        <span className="flex items-center gap-1 text-sm font-medium">
+          <span className="truncate">{title}</span>
+          {source === "verified" && <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-label={t("From a verified document")} />}
+        </span>
+        {source && <span className="block text-[11px] font-semibold text-ink/45">{source === "verified" ? t("From a verified document") : t("From an unverified document")}</span>}
         {subtitle && <span className="block truncate text-xs text-ink/55">{subtitle}</span>}
       </span>
       {children}

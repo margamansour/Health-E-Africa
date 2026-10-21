@@ -50,3 +50,12 @@ export function useFormat() {
   };
   return { date, time, dateTime, relative, locale };
 }
+
+/** Ids of records that are a verified source (scanned and passed all checks, or sent by a clinic). */
+export function useVerifiedRecordIds() {
+  return useLiveQuery(
+    async () => new Set((await db.records.toArray()).filter((r) => r.source === "facility" || r.verification?.status === "verified").map((r) => r.id)),
+    [],
+    new Set<string>(),
+  );
+}

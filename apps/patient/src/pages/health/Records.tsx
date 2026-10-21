@@ -2,26 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
-import { toast } from "sonner";
-import { Camera, FileImage, FileText, Inbox, Paperclip, Plus, Search, Upload } from "lucide-react";
+import { Activity, AlertTriangle, FileImage, FileText, FlaskConical, Inbox, Paperclip, Pill, Plus, Search, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
 import type { HealthRecord, RecordCategory } from "@/db/types";
-import { Badge, Button, Card, Chips, ConfirmDialog, EmptyState, Field, Input, KeyValue, Select, Sheet, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Chips, ConfirmDialog, EmptyState, Input, KeyValue, Sheet } from "@/components/ui";
+import { ScanUploadSheet } from "@/components/ScanUploadSheet";
+import { VerificationCard, VerifiedBadge } from "@/components/VerificationCard";
+import { CATEGORY_LABELS } from "@/lib/labels";
 import { Page, PageHeader } from "@/components/layout";
-import { addRecord } from "@/db/actions";
 import { active, useFormat } from "@/lib/hooks";
-import { formatBytes, nowIso, today } from "@/lib/utils";
+import { nowIso } from "@/lib/utils";
 
-export const CATEGORY_LABELS: Record<RecordCategory, string> = {
-  letter: "Clinic letter",
-  radiology: "Radiology / scan",
-  lab: "Lab report",
-  prescription: "Prescription",
-  discharge: "Discharge summary",
-  other: "Other",
-};
-
-const MAX_FILE = 15 * 1024 * 1024;
+export { CATEGORY_LABELS };
 
 export function RecordsPage() {
   const { t } = useTranslation();
@@ -38,7 +30,7 @@ export function RecordsPage() {
       all.filter(
         (r) =>
           (cat === "all" || r.category === cat) &&
-          (!q || `${r.title} ${r.facilityName ?? ""} ${r.notes ?? ""}`.toLowerCase().includes(q.toLowerCase())),
+          (!q || `${r.title} ${r.facilityName ?? ""} ${r.notes ?? ""} ${r.scannedText ?? ""}`.toLowerCase().includes(q.toLowerCase())),
       ),
     [all, q, cat],
   );
@@ -92,6 +84,7 @@ export function RecordsPage() {
                   {t(CATEGORY_LABELS[r.category])} · {fmt.date(r.date)}
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {r.verification && <VerifiedBadge verified={r.verification.status === "verified"} />}
                   {r.source === "facility" && (
                     <Badge tone="brand">
                       <Inbox className="h-3 w-3" />
@@ -110,96 +103,9 @@ export function RecordsPage() {
           ))
         )}
       </Page>
-      <UploadSheet open={uploadOpen} onClose={() => setParams({}, { replace: true })} />
+      <ScanUploadSheet open={uploadOpen} onClose={() => setParams({}, { replace: true })} />
       <RecordDetail record={selected} onClose={() => setSelected(null)} />
     </>
-  );
-}
-
-function UploadSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation();
-  const [file, setFile] = useState<File | null>(null);
-  const [f, setF] = useState({ title: "", category: "letter" as RecordCategory, date: today(), facilityName: "", notes: "" });
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setFile(null);
-      setF({ title: "", category: "letter", date: today(), facilityName: "", notes: "" });
-    }
-  }, [open]);
-
-  const pick = (fl: FileList | null) => {
-    const x = fl?.[0];
-    if (!x) return;
-    if (x.size > MAX_FILE) return toast.error(t("File is too large (max 15 MB)"));
-    setFile(x);
-    if (!f.title) setF((cur) => ({ ...cur, title: x.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ") }));
-  };
-
-  const save = async () => {
-    setBusy(true);
-    try {
-      await addRecord({ ...f, title: f.title.trim(), facilityName: f.facilityName || undefined, notes: f.notes || undefined, file: file ?? undefined });
-      toast.success(t("Record saved"));
-      onClose();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title={t("Upload a record")}
-      footer={
-        <Button className="w-full" disabled={!f.title.trim() || busy} onClick={() => void save()}>
-          {t("Save record")}
-        </Button>
-      }
-    >
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2">
-          <label className="flex cursor-pointer flex-col items-center gap-1 rounded-2xl border-2 border-dashed border-ink/10 p-4 text-sm text-ink/65 hover:border-brand-500">
-            <Camera className="h-6 w-6 text-brand-700" />
-            {t("Take photo")}
-            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => pick(e.target.files)} />
-          </label>
-          <label className="flex cursor-pointer flex-col items-center gap-1 rounded-2xl border-2 border-dashed border-ink/10 p-4 text-sm text-ink/65 hover:border-brand-500">
-            <Upload className="h-6 w-6 text-brand-700" />
-            {t("Choose file")}
-            <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => pick(e.target.files)} />
-          </label>
-        </div>
-        {file && (
-          <div className="flex items-center gap-2 rounded-2xl bg-cream p-3 text-sm">
-            <Paperclip className="h-4 w-4 text-ink/55" />
-            <span className="min-w-0 flex-1 truncate">{file.name}</span>
-            <span className="text-xs text-ink/55">{formatBytes(file.size)}</span>
-          </div>
-        )}
-        <Field label={t("Title")} required>
-          {(id) => <Input id={id} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder={t("e.g. Cardiology clinic letter")} />}
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t("Type")}>
-            {(id) => (
-              <Select id={id} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value as RecordCategory })}>
-                {(Object.keys(CATEGORY_LABELS) as RecordCategory[]).map((c) => (
-                  <option key={c} value={c}>
-                    {t(CATEGORY_LABELS[c])}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </Field>
-          <Field label={t("Date")}>{(id) => <Input id={id} type="date" max={today()} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />}</Field>
-        </div>
-        <Field label={t("Hospital or clinic")}>{(id) => <Input id={id} value={f.facilityName} onChange={(e) => setF({ ...f, facilityName: e.target.value })} />}</Field>
-        <Field label={t("Notes")}>{(id) => <Textarea id={id} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder={t("Key points, e.g. what the doctor said")} />}</Field>
-      </div>
-    </Sheet>
   );
 }
 
@@ -255,6 +161,11 @@ function RecordDetail({ record, onClose }: { record: HealthRecord | null; onClos
           {record.fileName && <KeyValue label={t("File")} value={record.fileName} />}
         </div>
         {record.notes && <p className="rounded-2xl bg-cream p-3 text-sm text-ink/80">{record.notes}</p>}
+        {record.verification && <VerificationCard v={record.verification} />}
+        {record.source === "facility" && !record.verification && (
+          <p className="rounded-2xl bg-mint p-3 text-sm font-semibold">{t("Sent directly by your care provider through the app, so it's a verified source.")}</p>
+        )}
+        <AddedFromRecord recordId={record.id} />
       </div>
       <ConfirmDialog
         open={confirm}
@@ -270,5 +181,39 @@ function RecordDetail({ record, onClose }: { record: HealthRecord | null; onClos
         }}
       />
     </Sheet>
+  );
+}
+
+/** Items that were added to the patient's record from this document. */
+function AddedFromRecord({ recordId }: { recordId: string }) {
+  const { t } = useTranslation();
+  const data = useLiveQuery(async () => {
+    const by = <T extends { sourceRecordId?: string; archivedAt?: string }>(rows: T[]) => rows.filter((r) => r.sourceRecordId === recordId && !r.archivedAt);
+    const [c, a, m, i, p] = await Promise.all([db.conditions.toArray(), db.allergies.toArray(), db.medications.toArray(), db.immunisations.toArray(), db.labPanels.toArray()]);
+    const panels = by(p);
+    const results = panels.length ? await db.labResults.where("panelId").anyOf(panels.map((x) => x.id)).toArray() : [];
+    return { conditions: by(c), allergies: by(a), medications: by(m), immunisations: by(i), results };
+  }, [recordId]);
+  if (!data) return null;
+  const rows = [
+    { icon: Activity, label: t("Conditions"), items: data.conditions.map((x) => x.name) },
+    { icon: AlertTriangle, label: t("Allergies"), items: data.allergies.map((x) => x.substance) },
+    { icon: Pill, label: t("Medicines"), items: data.medications.map((x) => `${x.name} ${x.dose}`) },
+    { icon: FlaskConical, label: t("Lab results"), items: data.results.map((x) => `${x.analyte} ${x.value} ${x.unit}`) },
+    { icon: Syringe, label: t("Immunisations"), items: data.immunisations.map((x) => x.vaccine) },
+  ].filter((r) => r.items.length);
+  if (!rows.length) return null;
+  return (
+    <div className="space-y-2 rounded-[24px] bg-cream p-4">
+      <p className="text-sm font-extrabold">{t("Added to your record from this document")}</p>
+      {rows.map((r) => (
+        <div key={r.label} className="flex gap-2 text-sm">
+          <r.icon className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            <span className="font-semibold">{r.label}:</span> <span className="text-ink/70">{r.items.join(", ")}</span>
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }

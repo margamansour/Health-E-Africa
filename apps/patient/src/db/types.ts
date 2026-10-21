@@ -4,9 +4,16 @@
 export type ID = string;
 export type Sex = "female" | "male";
 
+import type { Verification } from "@/domain/extract/verify";
+
 /** Health records are never hard-deleted (20-year retention); they are archived instead. */
 export interface Archivable {
   archivedAt?: string;
+}
+
+/** Items added from a scanned document keep a link back to it. */
+export interface FromDocument {
+  sourceRecordId?: ID;
 }
 
 export interface InsurancePlan {
@@ -39,7 +46,7 @@ export interface Profile {
   closedAt?: string;
 }
 
-export interface Condition extends Archivable {
+export interface Condition extends Archivable, FromDocument {
   id: ID;
   name: string;
   status: "active" | "resolved";
@@ -51,7 +58,7 @@ export interface Condition extends Archivable {
 
 export type Severity = "mild" | "moderate" | "severe";
 
-export interface Allergy extends Archivable {
+export interface Allergy extends Archivable, FromDocument {
   id: ID;
   substance: string;
   reaction?: string;
@@ -60,7 +67,7 @@ export interface Allergy extends Archivable {
   createdAt: string;
 }
 
-export interface Medication extends Archivable {
+export interface Medication extends Archivable, FromDocument {
   id: ID;
   name: string;
   dose: string;
@@ -75,7 +82,7 @@ export interface Medication extends Archivable {
   createdAt: string;
 }
 
-export interface Immunisation extends Archivable {
+export interface Immunisation extends Archivable, FromDocument {
   id: ID;
   vaccine: string;
   doseNumber: number;
@@ -104,6 +111,10 @@ export interface HealthRecord extends Archivable {
   fileType?: string;
   createdAt: string;
   seenAt?: string;
+  /** Result of scanning the document for authenticity marks (stamp, signature, known clinic…). */
+  verification?: Verification;
+  /** Text read from the document, kept so records can be searched. */
+  scannedText?: string;
 }
 
 export interface StoredFile {
@@ -114,7 +125,7 @@ export interface StoredFile {
   blob: Blob;
 }
 
-export interface LabPanel extends Archivable {
+export interface LabPanel extends Archivable, FromDocument {
   id: ID;
   name: string;
   date: string;

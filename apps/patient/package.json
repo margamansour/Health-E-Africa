@@ -12,19 +12,22 @@
     "build:offline": "node scripts/build-offline.mjs"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
     "i18next": "^26.4.7",
     "lucide-react": "^1.59.0",
+    "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-i18next": "^17.0.20",
     "react-router": "^7.18.4",
     "recharts": "^3.10.1",
-    "sonner": "^2.0.8"
+    "sonner": "^2.0.8",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
