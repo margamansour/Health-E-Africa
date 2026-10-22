@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, Keyboard, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, Keyboard, ListTodo, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
 import type { RecordCategory } from "@/db/types";
 import { Button, Checkbox, Field, Input, Notice, Select, Sheet, Textarea } from "./ui";
 import { VerificationCard } from "./VerificationCard";
-import { CATEGORY_LABELS } from "@/lib/labels";
+import { ACTION_KIND_LABEL, CATEGORY_LABELS } from "@/lib/labels";
 import { scanDocument, type ScanResult, type ScanStage } from "@/lib/scan";
 import { existingFor, saveScannedRecord, type ScanSelection } from "@/db/scanActions";
 import { extractionCount } from "@/domain/extract/parse";
@@ -102,6 +102,7 @@ export function ScanUploadSheet({
       e.immunisations.forEach((v, i) => (k[`immunisations:${i}`] = !ex.hasImmunisation(v)));
       e.labs.forEach((l, i) => (k[`labs:${i}`] = !ex.hasLab(l, e.date)));
       e.followUps.forEach((_, i) => (k[`followUps:${i}`] = true));
+      e.actions.forEach((_, i) => (k[`actions:${i}`] = true));
       setKeep(k);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : String(err));
@@ -120,6 +121,7 @@ export function ScanUploadSheet({
       allergies: sel("allergies", e?.allergies),
       immunisations: sel("immunisations", e?.immunisations),
       followUps: sel("followUps", e?.followUps),
+      actions: sel("actions", e?.actions),
     };
   }, [scan, keep]);
   const selectedCount = Object.values(selection).reduce((s, a) => s + a.length, 0);
@@ -327,6 +329,17 @@ export function ScanUploadSheet({
                     title={v.vaccine}
                     detail={[t("Dose {{n}} of {{total}}", { n: v.doseNumber, total: Math.max(1, v.doseNumber) }), v.dateGiven ? fmt.date(v.dateGiven) : "", v.batchNumber ? `${t("Batch")} ${v.batchNumber}` : ""].filter(Boolean).join(" · ")}
                     dup={existing?.hasImmunisation(v)}
+                  />
+                ))}
+              </ItemGroup>
+              <ItemGroup icon={<ListTodo className="h-4 w-4" />} tone="bg-rose" title={t("To do")} count={e.actions.length}>
+                {e.actions.map((a, i) => (
+                  <Item
+                    key={i}
+                    checked={!!keep[`actions:${i}`]}
+                    onChange={toggle(`actions:${i}`)}
+                    title={a.text}
+                    detail={[a.forGp ? t("For your GP") : t(ACTION_KIND_LABEL[a.kind]), a.due ? t("By {{date}}", { date: fmt.date(a.due) }) : ""].filter(Boolean).join(" · ")}
                   />
                 ))}
               </ItemGroup>

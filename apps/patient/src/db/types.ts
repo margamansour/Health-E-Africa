@@ -317,3 +317,18 @@ export interface Setting {
   key: string;
   value: unknown;
 }
+
+/** Something the patient needs to do, usually taken from an uploaded document (a plan, actions for GP, a medicine change). */
+export interface Task extends Archivable {
+  id: ID;
+  kind: "medication" | "test" | "referral" | "appointment" | "lifestyle" | "other";
+  /** The instruction, as written in the document where possible. */
+  title: string;
+  /** For the patient's GP or regular doctor: the patient takes it to them. */
+  forGp: boolean;
+  dueDate?: string;
+  /** The document it came from. */
+  sourceRecordId?: ID;
+  createdAt: string;
+  doneAt?: string;
+}

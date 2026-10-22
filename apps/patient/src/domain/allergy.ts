@@ -4,7 +4,7 @@ import type { Allergy } from "@/db/types";
  * Allergy groups → medicine names that belong to them.
  * Decision support only: a pharmacist must always check.
  */
-const GROUPS: Record<string, string[]> = {
+export const GROUPS: Record<string, string[]> = {
   penicillin: [
     "penicillin",
     "amoxicillin",

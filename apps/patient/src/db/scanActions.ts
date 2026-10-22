@@ -1,6 +1,6 @@
 import { db } from "./db";
 import type { HealthRecord, LabResult, RecordCategory } from "./types";
-import type { ExtractedAllergy, ExtractedCondition, ExtractedFollowUp, ExtractedImmunisation, ExtractedLab, ExtractedMedication } from "@/domain/extract/parse";
+import type { ExtractedAction, ExtractedAllergy, ExtractedCondition, ExtractedFollowUp, ExtractedImmunisation, ExtractedLab, ExtractedMedication } from "@/domain/extract/parse";
 import type { Verification } from "@/domain/extract/verify";
 import { addRecord, notify, syncReminders } from "./actions";
 import { nowIso, parseDateKey, uid } from "@/lib/utils";
@@ -13,6 +13,7 @@ export interface ScanSelection {
   allergies: ExtractedAllergy[];
   immunisations: ExtractedImmunisation[];
   followUps: ExtractedFollowUp[];
+  actions: ExtractedAction[];
 }
 
 const same = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
@@ -82,8 +83,34 @@ export async function saveScannedRecord(input: {
   const created = nowIso();
   const s = input.selected;
   let added = 0;
+  let tasks = 0;
 
-  await db.transaction("rw", [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.events], async () => {
+  await db.transaction("rw", [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.events, db.tasks], async () => {
+    // To-dos from the document: its plan, actions for the GP, and medicine changes.
+    const mentioned = (name: string) => s.actions.some((a) => a.text.toLowerCase().includes(name.toLowerCase()));
+    const taskByDue = new Map<string, string>();
+    for (const a of s.actions) {
+      const id = uid();
+      await db.tasks.add({ id, kind: a.kind, title: a.text, forGp: a.forGp, dueDate: a.due, sourceRecordId: recordId, createdAt: created });
+      if (a.due && !taskByDue.has(a.due)) taskByDue.set(a.due, id);
+      tasks++;
+    }
+    for (const m of s.medications) {
+      if (mentioned(m.name)) continue;
+      const change = ex.medicationChange(m);
+      const was = ex.currentDose(m);
+      const title =
+        change === "update" && m.status === "stopped"
+          ? `${m.name} has been stopped`
+          : change === "update" && was && was !== m.dose
+            ? `${m.name} dose changed from ${was} to ${m.dose}`
+            : change === "new" && m.type === "repeat" && m.status === "active"
+              ? `New regular medicine: ${m.name} ${m.dose}`
+              : undefined;
+      if (!title) continue;
+      await db.tasks.add({ id: uid(), kind: "medication", title, forGp: false, sourceRecordId: recordId, createdAt: created });
+      tasks++;
+    }
     for (const c of s.conditions) {
       if (ex.hasCondition(c)) continue;
       await db.conditions.add({ id: uid(), name: c.name, status: c.status, chronic: c.chronic, onsetDate: c.status === "active" ? input.date : undefined, createdAt: created, sourceRecordId: recordId });
@@ -147,11 +174,21 @@ export async function saveScannedRecord(input: {
     for (const f of s.followUps) {
       const start = parseDateKey(f.date);
       start.setHours(9, 0, 0, 0);
-      await db.events.add({ id: uid(), title: f.title, type: "review", start: start.toISOString(), allDay: true, notes: `From: ${input.title}`, source: "manual", remindMinutesBefore: 24 * 60 });
+      // Linked to the matching to-do (same due date), so it isn't offered for the calendar twice.
+      const task = taskByDue.get(f.date);
+      await db.events.add({ id: uid(), title: f.title, type: "review", start: start.toISOString(), allDay: true, notes: task ? `task:${task}` : `From: ${input.title}`, source: "manual", remindMinutesBefore: 24 * 60 });
       added++;
     }
   });
 
+  if (tasks)
+    await notify({
+      type: "reminder",
+      key: `tasks:${recordId}:${created}`,
+      title: tasks === 1 ? "1 thing to do from your document" : `${tasks} things to do from your document`,
+      body: `${input.title}: follow-ups, tests or medicine changes to act on.`,
+      link: "/tasks",
+    });
   await notify({
     type: "result",
     title: input.verification?.status === "verified" ? "Verified document added" : "Document added",

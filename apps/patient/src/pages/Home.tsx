@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
-import { Activity, AlertTriangle, ArrowRight, Bell, ChevronRight, ClipboardList, Droplet, FilePlus2, FlaskConical, HeartHandshake, Inbox, Pill, Search } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, ListTodo, Bell, ChevronRight, ClipboardList, Droplet, FilePlus2, FlaskConical, HeartHandshake, Inbox, Pill, Search } from "lucide-react";
 import { db } from "@/db/db";
 import { Card, type CardTone } from "@/components/ui";
 import { Page } from "@/components/layout";
 import { active, useFormat, useProfile } from "@/lib/hooks";
 import { cn, initials } from "@/lib/utils";
 import type { MedRequestStatus, Profile } from "@/db/types";
+import { TaskCard, useOpenTasks } from "@/pages/Tasks";
 
 const OPEN_REQUEST_STATES: MedRequestStatus[] = ["submitted", "awaiting_prescriber", "approved", "dispensed", "out_for_delivery"];
 
@@ -61,6 +62,7 @@ export function HomePage() {
       unseen,
     };
   }, []);
+  const tasks = useOpenTasks();
   // Prescription requests still in progress at the pharmacy, shown on the Prescriptions button.
   const openRequests = useLiveQuery(() => db.medRequests.filter((r) => OPEN_REQUEST_STATES.includes(r.status)).count(), [], 0);
 
@@ -127,6 +129,28 @@ export function HomePage() {
           </Link>
         ))}
       </div>
+
+      {/* Things to do from the patient's documents */}
+      {tasks.length > 0 && (
+        <Card tone="peach" className="space-y-2 p-4">
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-2 text-lg font-extrabold">
+              <ListTodo className="h-5 w-5" />
+              {t("To do")}
+              <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-bold">{tasks.length}</span>
+            </p>
+            <Link to="/tasks" className="flex items-center gap-1 text-sm font-bold">
+              {t("See all")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {tasks.slice(0, 3).map((task) => (
+              <TaskCard key={task.id} task={task} compact />
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Passport hero */}
       <Card tone="lavender" onClick={() => navigate(pct < 100 ? "/bio" : "/summary")} className="p-5">

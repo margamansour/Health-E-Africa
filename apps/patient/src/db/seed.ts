@@ -17,7 +17,7 @@ export async function loadSampleHealthData() {
 
   await db.transaction(
     "rw",
-    [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.records, db.ruleStatus, db.profile],
+    [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.records, db.ruleStatus, db.profile, db.tasks],
     async () => {
       const p = await db.profile.get("me");
       if (p) {
@@ -95,6 +95,12 @@ export async function loadSampleHealthData() {
         { id: letterId, category: "letter", title: "Diabetes clinic review letter", date: m(-1), facilityName: "Uzima Family Clinic", source: "facility", notes: "Type 2 diabetes and hypertension. HbA1c improving. Continue metformin. Review in 3 months.", createdAt: created, seenAt: created },
         { id: uid(), category: "radiology", title: "Chest X-ray report", date: m(-14), facilityName: "Afya Bora Hospital", source: "facility", notes: "No active lung disease.", createdAt: created, seenAt: created },
         { id: prescriptionId, category: "prescription", title: "Repeat prescription — Metformin, Amlodipine, Atorvastatin", date: m(-2), facilityName: "Uzima Family Clinic", source: "facility", notes: "Valid for 6 months, 5 repeats.", createdAt: created, seenAt: created },
+      ]);
+
+      // Things to do from the clinic letter.
+      await db.tasks.bulkAdd([
+        { id: uid(), kind: "appointment", title: "Review in 3 months", forGp: false, dueDate: m(2), sourceRecordId: letterId, createdAt: created },
+        { id: uid(), kind: "test", title: "Repeat HbA1c before the next review", forGp: true, dueDate: d(50), sourceRecordId: letterId, createdAt: created },
       ]);
 
       await db.ruleStatus.bulkPut([

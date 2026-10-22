@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 import { standardise } from "@/domain/units";
 import { isClinicalDiagnosis } from "@/domain/extract/diagnosis";
+import { isClearlyNotAllergen } from "@/domain/extract/allergen";
 import type {
   Allergy,
   Appointment,
@@ -19,6 +20,7 @@ import type {
   Profile,
   RuleStatus,
   Setting,
+  Task,
   ShareAccess,
   StoredFile,
   SummaryShare,
@@ -49,6 +51,7 @@ export class HealthDB extends Dexie {
   audit!: EntityTable<AuditEntry, "id">;
   ruleStatus!: EntityTable<RuleStatus, "ruleId">;
   settings!: EntityTable<Setting, "key">;
+  tasks!: EntityTable<Task, "id">;
 
   constructor(name = "health-e-africa") {
     super(name);
@@ -94,6 +97,18 @@ export class HealthDB extends Dexie {
           if (c.sourceRecordId && !c.editedAt && !c.archivedAt && !isClinicalDiagnosis(c.name)) c.archivedAt = new Date().toISOString();
         }),
     );
+    // v4: allergies read from documents that are clearly not a substance (e.g. "Actions for GP")
+    // are archived. Anything that might be a real allergy is kept, to be safe.
+    this.version(4).upgrade((tx) =>
+      tx
+        .table("allergies")
+        .toCollection()
+        .modify((a: Allergy) => {
+          if (a.sourceRecordId && !a.editedAt && !a.archivedAt && isClearlyNotAllergen(a.substance)) a.archivedAt = new Date().toISOString();
+        }),
+    );
+    // v5: to-do items for the patient, taken from documents (plans, actions for GP, medicine changes).
+    this.version(5).stores({ tasks: "id, doneAt, dueDate, sourceRecordId, createdAt" });
   }
 }
 
@@ -124,6 +139,7 @@ const AUDITED = [
   "medRequests",
   "shares",
   "consents",
+  "tasks",
 ] as const;
 
 export const ACTOR = "patient";

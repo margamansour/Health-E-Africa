@@ -77,3 +77,40 @@ describe("conditions: clinical diagnoses only", () => {
     expect(e.conditions.map((c) => c.name)).toEqual(["Type 2 diabetes", "Hypertension"]);
   });
 });
+
+import { isAllergen, isClearlyNotAllergen } from "./allergen";
+
+describe("allergies: substances only", () => {
+  it("keeps real allergens", () => {
+    for (const a of ["Penicillin", "Sulfa drugs", "Amoxicillin", "Co-trimoxazole", "Peanuts", "Bee stings", "Latex", "Ciprofloxacin", "allergic to codeine", "Iodine contrast", "Shellfish"])
+      expect(isAllergen(a), a).toBe(true);
+  });
+  it("drops headings and notes", () => {
+    for (const a of ["Actions for GP", "GP actions", "Please review", "Follow up in 2 weeks", "Current medications", "Plan", "NKDA", "Discharge summary"])
+      expect(isAllergen(a), a).toBe(false);
+    expect(isClearlyNotAllergen("Actions for GP")).toBe(true);
+    expect(isClearlyNotAllergen("Penicillin")).toBe(false);
+  });
+  it("an Allergies section ends at the next heading", () => {
+    const e = extractFromText(
+      ["Discharge summary", "Date: 05/09/2026", "Allergies:", "Penicillin (rash)", "Actions for GP", "Please repeat FBC in 4 weeks", "Stop amlodipine"],
+      { facilities: [], profile: { fullName: "Amina Wanjiru", dob: "1974-03-12" } },
+    );
+    expect(e.allergies.map((a) => a.substance)).toEqual(["Penicillin"]);
+  });
+});
+
+import { parseAction } from "./actions";
+
+describe("actions: instructions only", () => {
+  const opts = { forGp: false, docDate: "2026-10-15", findDate: () => undefined };
+  it("keeps instructions", () => {
+    for (const a of ["Repeat HbA1c and lipids in 3 months", "Review in 3 months", "Diabetic eye screening referral", "Stop amlodipine", "Please repeat FBC in 4 weeks", "Reduce salt intake", "Ensure patient attends antenatal clinic"])
+      expect(parseAction(a, opts), a).toBeDefined();
+    expect(parseAction("Review in 3 months", opts)?.due).toBe("2027-01-15");
+  });
+  it("drops stamps, footers and sign-offs", () => {
+    for (const a of ["MI LY C", "FA L", "IM C", "U 15 OCT 2026", "Medical Officer, KMPDC Reg No: A12345 D", "SAMPLE DOCUMENT - FOR DEMO ONLY - FICTIONAL PATIENT AND CLINIC", "Kind regards", "Dr. A. Otieno", "Patient is a 52 year old woman"])
+      expect(parseAction(a, opts), a).toBeUndefined();
+  });
+});

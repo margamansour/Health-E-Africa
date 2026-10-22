@@ -3,6 +3,10 @@ import { ANALYTES, FACILITY_WORDS, FREQUENCIES, OTC_MEDICINES, PRN, VACCINES } f
 import { addMonths, addDays, parseDateKey, toDateKey } from "@/lib/utils";
 import { nearlySame } from "./fuzzy";
 import { normaliseCondition, type ExtractedCondition } from "./diagnosis";
+import { cleanSubstance, isAllergen } from "./allergen";
+import { parseAction, type ExtractedAction } from "./actions";
+
+export type { ExtractedAction };
 
 export { normaliseCondition };
 
@@ -66,6 +70,8 @@ export interface Extraction {
   allergies: ExtractedAllergy[];
   immunisations: ExtractedImmunisation[];
   followUps: ExtractedFollowUp[];
+  /** Things to do: book a review, repeat a test, change a medicine, see a specialist. */
+  actions: ExtractedAction[];
   notes?: string;
 }
 
@@ -127,14 +133,16 @@ function cells(line: string) {
 
 // ---------- Sections ----------
 
-type Section = "conditions" | "allergies" | "medications" | "immunisations" | "plan" | "notes" | "other";
+type Section = "conditions" | "allergies" | "medications" | "immunisations" | "plan" | "gp" | "notes" | "other";
 
 const SECTION_HEADINGS: [RegExp, Section][] = [
   [/^(diagnos[ie]s|diagnosis|dx|impression|assessment|problem list|problems|past medical history|pmh|active problems|medical history)\b/i, "conditions"],
   [/^(known\s+)?(drug\s+)?allerg(y|ies)\b/i, "allergies"],
   [/^((current|regular|discharge|repeat)\s+)?(medications?|medicines|drugs|treatment|rx|prescription)\b/i, "medications"],
   [/^(immuni[sz]ations?|vaccinations?|vaccines?( given)?)\b/i, "immunisations"],
-  [/^(plan|follow[ -]?up|recommendations?|advice|management)\b/i, "plan"],
+  [/^(actions?\s+for\s+(the\s+)?(gp|general practitioner|family doctor|referring (doctor|clinician))|gp actions?|gp to\b|requests? (to|for) (the\s+)?gp|recommendations? (to|for) (the\s+)?gp)/i, "gp"],
+  [/^(plan|follow[ -]?up|recommendations?|advice|management|actions?|to do|requests?|next steps|instructions)\b/i, "plan"],
+  [/^(history of presenting (complaint|illness)|presenting complaint|hpi|social history|family history|examination|on examination|o\/e|observations|vital signs|vitals|investigations|results|procedures?( performed)?|clinical (details|summary|course)|hospital course|course in hospital|reason for (admission|referral|visit))\b/i, "other"],
   [/^(comments?|conclusion|summary|findings|clinical notes?)\b/i, "notes"],
 ];
 
@@ -161,9 +169,11 @@ function sectionise(lines: string[]): SectionLine[] {
       const rest = plain.slice(m[0].length);
       // A heading is short, or followed by ":" and content.
       if (/^\s*:/.test(rest) || rest.trim() === "" || plain.length < 32) {
-        current = section;
         matched = true;
         const content = rest.replace(/^\s*:\s*/, "").trim();
+        // An inline note like "On examination: chest clear" is skipped without ending the current section.
+        if (section === "other" && content) break;
+        current = section;
         if (content) out.push({ section, text: content });
       }
       break;
@@ -410,9 +420,10 @@ function parseAllergy(item: string): ExtractedAllergy | undefined {
   if (!text || /\b(nkda|no known|none|nil)\b/i.test(text)) return undefined;
   const paren = text.match(/^(.+?)\s*\((.+)\)\s*$/);
   const dash = text.match(/^(.+?)\s+[-–:]\s+(.+)$/);
-  const substance = (paren?.[1] ?? dash?.[1] ?? text).replace(/[.,;]+$/, "").trim();
+  const substance = cleanSubstance(paren?.[1] ?? dash?.[1] ?? text);
   const reaction = (paren?.[2] ?? dash?.[2])?.trim();
-  if (substance.length < 2 || substance.split(" ").length > 4) return undefined;
+  // Only real substances (medicines, foods, stings…), never headings or notes like "Actions for GP".
+  if (!isAllergen(substance)) return undefined;
   const all = `${substance} ${reaction ?? ""}`;
   const severity: Severity = /anaphyla|severe|swelling of (the )?(face|throat|tongue)/i.test(all) ? "severe" : /\bmild\b/i.test(all) ? "mild" : "moderate";
   return { substance: capitalise(substance), reaction: reaction ? capitalise(reaction) : undefined, severity };
@@ -494,6 +505,10 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
   const allergies: ExtractedAllergy[] = [];
   const immunisations: ExtractedImmunisation[] = [];
   const followUps: ExtractedFollowUp[] = [];
+  const actions: ExtractedAction[] = [];
+  const addAction = (a: ExtractedAction | undefined) => {
+    if (a && !actions.some((x) => x.text.toLowerCase() === a.text.toLowerCase())) actions.push(a);
+  };
   const notes: string[] = [];
   let noKnownAllergies = false;
 
@@ -528,15 +543,21 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
         }
         break;
       case "medications":
-      case "plan": {
+      case "plan":
+      case "gp": {
+        // Every instruction in a plan becomes a to-do for the patient (or to take to their GP).
+        if (section !== "medications") addAction(parseAction(plain, { forGp: section === "gp", docDate: date, findDate }));
         const med = parseMedication(plain);
         if (med) {
           if (!medications.some((x) => x.name.toLowerCase() === med.name.toLowerCase())) medications.push(med);
+          // A medicine list that notes a change ("dose increased", "new", "stopped") is also something to act on.
+          if (section === "medications" && /\b(new|start\w*|stop\w*|increas\w*|reduc\w*|decreas\w*|chang\w*|switch\w*)\b/i.test(plain))
+            addAction({ kind: "medication", text: plain.replace(/^[-•*·–>\s]+/, "").trim(), forGp: false });
           break;
         }
         const f = parseFollowUp(plain, date);
         if (f) followUps.push(f);
-        const imm = section === "plan" ? undefined : parseImmunisation(plain, date);
+        const imm = section === "medications" ? parseImmunisation(plain, date) : undefined;
         if (imm) immunisations.push(imm);
         break;
       }
@@ -599,10 +620,11 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
     allergies,
     immunisations,
     followUps: followUps.filter((f, i, arr) => arr.findIndex((x) => x.title === f.title) === i),
+    actions,
     notes: notes.length ? notes.join(" ") : undefined,
   };
 }
 
 export function extractionCount(e: Extraction) {
-  return e.labs.length + e.conditions.length + e.medications.length + e.allergies.length + e.immunisations.length + e.followUps.length;
+  return e.labs.length + e.conditions.length + e.medications.length + e.allergies.length + e.immunisations.length + e.followUps.length + e.actions.length;
 }

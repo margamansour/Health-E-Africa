@@ -17,6 +17,7 @@ import {
   Stethoscope,
   Syringe,
   User,
+  ListTodo,
   type LucideIcon,
 } from "lucide-react";
 import { Sheet } from "./ui";
@@ -39,6 +40,7 @@ export const HEALTH_LINKS: NavItem[] = [
 ];
 
 export const MORE_LINKS: NavItem[] = [
+  { to: "/tasks", label: "To do", description: "Follow-ups, tests and medicine changes from your documents", icon: ListTodo, tone: "bg-peach" },
   { to: "/appointments", label: "My appointments", description: "Requests and bookings", icon: Stethoscope, tone: "bg-sky" },
   { to: "/prescriptions", label: "Prescriptions", description: "Repeat and acute medicines", icon: Pill, tone: "bg-rose" },
   { to: "/calendar", label: "Calendar", description: "Events and health reminders", icon: CalendarDays, tone: "bg-butter" },
