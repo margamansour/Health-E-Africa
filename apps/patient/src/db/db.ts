@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import { standardise } from "@/domain/units";
+import { isClinicalDiagnosis } from "@/domain/extract/diagnosis";
 import type {
   Allergy,
   Appointment,
@@ -81,6 +82,16 @@ export class HealthDB extends Dexie {
         .modify((r: LabResult) => {
           if (r.originalUnit) return;
           Object.assign(r, toStandard(r));
+        }),
+    );
+    // v3: conditions read from documents that aren't clinical diagnoses (findings, plans, names,
+    // queries) are archived. Kept for the record, never deleted; ones the patient edited are left alone.
+    this.version(3).upgrade((tx) =>
+      tx
+        .table("conditions")
+        .toCollection()
+        .modify((c: Condition) => {
+          if (c.sourceRecordId && !c.editedAt && !c.archivedAt && !isClinicalDiagnosis(c.name)) c.archivedAt = new Date().toISOString();
         }),
     );
   }

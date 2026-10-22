@@ -1,7 +1,10 @@
 import type { Facility, Profile, RecordCategory, Severity } from "@/db/types";
-import { ANALYTES, CONDITIONS, FACILITY_WORDS, FREQUENCIES, OTC_MEDICINES, PRN, VACCINES } from "./dictionary";
+import { ANALYTES, FACILITY_WORDS, FREQUENCIES, OTC_MEDICINES, PRN, VACCINES } from "./dictionary";
 import { addMonths, addDays, parseDateKey, toDateKey } from "@/lib/utils";
 import { nearlySame } from "./fuzzy";
+import { normaliseCondition, type ExtractedCondition } from "./diagnosis";
+
+export { normaliseCondition };
 
 // ---------- Types ----------
 
@@ -14,11 +17,7 @@ export interface ExtractedLab {
   panel: string;
 }
 
-export interface ExtractedCondition {
-  name: string;
-  chronic: boolean;
-  status: "active" | "resolved";
-}
+export type { ExtractedCondition };
 
 export interface ExtractedMedication {
   name: string;
@@ -371,36 +370,6 @@ function panelHeading(line: string): string | undefined {
 }
 
 // ---------- Conditions ----------
-
-export function normaliseCondition(item: string): ExtractedCondition | undefined {
-  const text = item.replace(/\s+/g, " ").trim();
-  if (text.length < 3) return undefined;
-  const lower = ` ${text.toLowerCase()} `;
-  const resolved = /\b(treated|resolved|history of|previous|past|h\/o)\b/i.test(text);
-  for (const def of CONDITIONS) {
-    if (def.keywords.some((k) => new RegExp(`[^a-z]${escapeRe(k)}[^a-z]`).test(lower))) {
-      return { name: def.name, chronic: def.chronic, status: resolved ? "resolved" : "active" };
-    }
-  }
-  // Close spelling of a one-word condition (e.g. "tonsillitic" read from handwriting).
-  const words = text.toLowerCase().match(/[a-z]{6,}/g) ?? [];
-  for (const def of CONDITIONS) {
-    const kw = def.keywords.find((k) => !k.includes(" ") && k.length >= 6 && words.some((w) => nearlySame(w, k)));
-    if (kw) return { name: def.name, chronic: def.chronic, status: resolved ? "resolved" : "active" };
-  }
-  // Not in the dictionary: keep the wording, without qualifiers like "(new)".
-  const cleaned = text
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\b(new|known|newly diagnosed|query|\?)\b/gi, "")
-    .replace(/[,;.]\s*(treated|resolved).*$/i, "")
-    .replace(/\s+/g, " ")
-    .replace(/[,;.\s-]+$/, "")
-    .trim();
-  if (cleaned.length < 3 || cleaned.length > 60 || /\d{2,}/.test(cleaned)) return undefined;
-  // Prose sentences aren't diagnoses.
-  if (cleaned.split(" ").length > 6) return undefined;
-  return { name: capitalise(cleaned), chronic: false, status: resolved ? "resolved" : "active" };
-}
 
 // ---------- Medicines ----------
 
