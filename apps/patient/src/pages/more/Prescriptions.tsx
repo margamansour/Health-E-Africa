@@ -9,7 +9,7 @@ import type { Medication, MedRequest, MedRequestStatus } from "@/db/types";
 import { Badge, Button, Card, Checkbox, EmptyState, Field, Input, Notice, Select, Sheet, Tabs, Textarea } from "@/components/ui";
 import { Page, PageHeader } from "@/components/layout";
 import { MedicationSheet } from "@/components/ClinicalForms";
-import { findAllergyConflicts } from "@/domain/allergy";
+import { checkMedicines, MedicineSafetyCard, SafetyList, useMedicineSafety } from "@/components/MedicineSafety";
 import { cancelMedRequest, simulatePharmacyReject, simulatePharmacyStep, submitMedRequest } from "@/db/actions";
 import { active, useFormat, useProfile } from "@/lib/hooks";
 import { today } from "@/lib/utils";
@@ -34,7 +34,7 @@ export function PrescriptionsPage() {
   const tab = params.get("tab") === "requests" ? "requests" : "medicines";
   const profile = useProfile();
   const meds = active(useLiveQuery(() => db.medications.toArray(), []));
-  const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
+  const safety = useMedicineSafety();
   const requests = useLiveQuery(() => db.medRequests.orderBy("createdAt").reverse().toArray(), []) ?? [];
   const facilities = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").toArray(), []) ?? [];
   const [selected, setSelected] = useState<string[]>([]);
@@ -72,6 +72,7 @@ export function PrescriptionsPage() {
 
         {tab === "medicines" && (
           <>
+            <MedicineSafetyCard />
             {repeats.length === 0 ? (
               <EmptyState
                 icon={<Pill className="h-6 w-6" />}
@@ -84,7 +85,7 @@ export function PrescriptionsPage() {
                 <p className="px-1 text-sm text-ink/65">{t("Select the medicines you need, then request them.")}</p>
                 <Card className="divide-y divide-ink/5 p-0">
                   {repeats.map((m) => {
-                    const conflicts = findAllergyConflicts(m.name, allergies);
+                    const alerts = safety.issuesFor(m.name);
                     const overdue = m.reviewDate && m.reviewDate < tk;
                     const pending = openRequestFor(m.id);
                     return (
@@ -112,12 +113,14 @@ export function PrescriptionsPage() {
                             {overdue ? t("Medication review overdue since {{date}}", { date: fmt.date(m.reviewDate) }) : t("Medication review due {{date}}", { date: fmt.date(m.reviewDate) })}
                           </p>
                         )}
-                        {conflicts.length > 0 && (
-                          <p className="flex items-center gap-1 pl-8 text-xs font-medium text-red-600">
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                            {t("Allergy warning: {{substance}}", { substance: conflicts.map((c) => c.allergy.substance).join(", ") })}
+                        {alerts.map((a, n) => (
+                          <p key={n} className={`flex items-start gap-1 pl-8 text-xs font-medium ${a.severity === "major" ? "text-red-600" : "text-amber-700"}`}>
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            {a.kind === "allergy"
+                              ? t("Allergy warning: {{title}}", { title: a.title })
+                              : t("{{kind}}: {{title}}", { kind: a.kind === "duplicate" ? t("Same type") : t("Interaction"), title: a.title })}
                           </p>
-                        )}
+                        ))}
                       </div>
                     );
                   })}
@@ -192,6 +195,12 @@ function RequestCard({ req, pharmacyName }: { req: MedRequest; pharmacyName: str
         ))}
         {req.acuteDetails && <li className="text-ink/65">“{req.acuteDetails}”</li>}
       </ul>
+      {req.safetyNotes?.length ? (
+        <p className="flex items-start gap-1 text-xs font-medium text-amber-800">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {t("{{count}} safety alert(s) sent to the pharmacist to check", { count: req.safetyNotes.length })}
+        </p>
+      ) : null}
       {!["rejected", "cancelled"].includes(req.status) && (
         <ol className="flex items-center gap-1">
           {steps.map((s, i) => (
@@ -239,7 +248,7 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
   // Requests can only be sent to partner pharmacies through the app.
   const pharmacies = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").filter((f) => f.type === "pharmacy").toArray(), []) ?? [];
   const prescriptions = active(useLiveQuery(() => db.records.where("category").equals("prescription").reverse().sortBy("date"), []));
-  const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
+  const safety = useMedicineSafety();
   const [pharmacyId, setPharmacyId] = useState("");
   const [delivery, setDelivery] = useState<"delivery" | "collect">("delivery");
   const [address, setAddress] = useState("");
@@ -270,10 +279,13 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
     if (pharmacy && !pharmacy.delivers) setDelivery("collect");
   }, [pharmacy]);
 
+  // What's being asked for, checked against allergies and every other current medicine.
   const conflicts = useMemo(() => {
-    const names = type === "repeat" ? meds.map((m) => m.name) : acute.medicine ? [acute.medicine] : [];
-    return names.flatMap((n) => findAllergyConflicts(n, allergies).map((c) => ({ ...c, med: n })));
-  }, [type, meds, acute.medicine, allergies]);
+    const asked = type === "repeat" ? meds.map((m) => m.name) : acute.medicine.trim() ? [acute.medicine.trim()] : [];
+    if (!asked.length) return [];
+    const current = safety.meds.map((m) => m.name);
+    return checkMedicines([...new Set([...asked, ...current])], safety.allergies, { onlyInvolving: asked });
+  }, [type, meds, acute.medicine, safety.meds, safety.allergies]);
   const needsRx = type === "repeat" && meds.some((m) => m.prescriptionOnly) && !rxId;
 
   if (!type) return null;
@@ -285,6 +297,7 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
       type,
       items: type === "repeat" ? meds.map((m) => ({ medicationId: m.id, name: m.name, dose: m.dose })) : acute.medicine ? [{ name: acute.medicine }] : [],
       acuteDetails: type === "acute" ? acute.details.trim() : undefined,
+      safetyNotes: conflicts.length ? conflicts.map((c) => `${c.title}: ${c.effect}`) : undefined,
       prescriptionRecordId: type === "repeat" ? rxId || undefined : undefined,
       deliveryAddress: delivery === "delivery" ? address.trim() : "",
       delivery,
@@ -330,17 +343,17 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
         )}
 
         {conflicts.length > 0 && (
-          <Notice tone="red" icon={<AlertTriangle className="h-4 w-4" />}>
-            <p className="font-semibold">{t("Allergy warning")}</p>
-            {conflicts.map((c, i) => (
-              <p key={i}>{t("{{med}} may not be safe with your {{substance}} allergy.", { med: c.med, substance: c.allergy.substance })}</p>
-            ))}
-            <div className="mt-2">
-              <Checkbox checked={ackAllergy} onChange={setAckAllergy}>
-                {t("I understand. The pharmacist will check this with me.")}
-              </Checkbox>
-            </div>
-          </Notice>
+          <div className="space-y-2 rounded-[24px] bg-white p-3 ring-2 ring-coral">
+            <p className="flex items-center gap-1.5 font-extrabold">
+              <AlertTriangle className="h-4 w-4 text-red-700" />
+              {t("Safety check: {{count}} alert(s)", { count: conflicts.length })}
+            </p>
+            <SafetyList issues={conflicts} />
+            <p className="text-xs text-ink/60">{t("These alerts are sent with your request so the pharmacist can check them with you.")}</p>
+            <Checkbox checked={ackAllergy} onChange={setAckAllergy}>
+              {t("I understand. The pharmacist will check this with me.")}
+            </Checkbox>
+          </div>
         )}
 
         <Field label={t("Pharmacy")}>

@@ -13,6 +13,7 @@ import { scanDocument, type ScanResult, type ScanStage } from "@/lib/scan";
 import { existingFor, saveScannedRecord, type ScanSelection } from "@/db/scanActions";
 import { extractionCount } from "@/domain/extract/parse";
 import { findAllergyConflicts } from "@/domain/allergy";
+import { interactionsWith } from "@/domain/interactions";
 import { flagFor } from "@/domain/labs";
 import { standardise } from "@/domain/units";
 import { useFormat, useProfile } from "@/lib/hooks";
@@ -48,6 +49,7 @@ export function ScanUploadSheet({
   const fmt = useFormat();
   const profile = useProfile();
   const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
+  const currentMeds = useLiveQuery(() => db.medications.filter((x) => !x.archivedAt && x.status === "active").toArray(), []) ?? [];
   const [step, setStep] = useState<Step>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [stage, setStage] = useState<{ s: ScanStage; p?: number }>({ s: "opening" });
@@ -288,6 +290,9 @@ export function ScanUploadSheet({
                 {e.medications.map((m, i) => {
                   const change = existing?.medicationChange(m);
                   const conflict = findAllergyConflicts(m.name, allergies)[0];
+                  // Against the patient's current medicines and the others in this document.
+                  const others = [...new Set([...currentMeds.map((x) => x.name), ...e.medications.map((x) => x.name)])].filter((n) => n.toLowerCase() !== m.name.toLowerCase());
+                  const clash = interactionsWith(m.name, others)[0];
                   return (
                     <Item
                       key={i}
@@ -297,7 +302,13 @@ export function ScanUploadSheet({
                       detail={[m.frequency, m.type === "acute" ? t("Short course") : "", m.status === "stopped" ? t("Stopped") : ""].filter(Boolean).join(" · ")}
                       dup={change === "same"}
                       tag={change === "update" ? t("Update: was {{dose}}", { dose: existing?.currentDose(m) ?? "" }) : undefined}
-                      warning={conflict ? t("Allergy warning: {{substance}}", { substance: conflict.allergy.substance }) : undefined}
+                      warning={
+                        conflict
+                          ? t("Allergy warning: {{substance}}", { substance: conflict.allergy.substance })
+                          : clash
+                            ? `${clash.kind === "duplicate" ? t("Same type") : t("Interaction")}: ${clash.meds.join(" + ")}. ${t(clash.effect)}`
+                            : undefined
+                      }
                     />
                   );
                 })}

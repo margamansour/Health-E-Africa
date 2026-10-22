@@ -233,6 +233,8 @@ export interface MedRequest {
   type: "repeat" | "acute";
   items: { medicationId?: ID; name: string; dose?: string }[];
   acuteDetails?: string;
+  /** Allergy and interaction alerts shown to the patient, passed on for the pharmacist to check. */
+  safetyNotes?: string[];
   prescriptionRecordId?: ID;
   deliveryAddress: string;
   delivery: "delivery" | "collect";

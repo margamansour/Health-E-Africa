@@ -8,6 +8,8 @@ import { markEdited } from "@/domain/provenance";
 import type { Allergy, Condition, Medication, Severity } from "@/db/types";
 import { Button, Checkbox, ConfirmDialog, Field, Input, Notice, Select, Sheet, Textarea } from "./ui";
 import { findAllergyConflicts } from "@/domain/allergy";
+import { interactionsWith } from "@/domain/interactions";
+import { interactionIssue, SafetyList } from "./MedicineSafety";
 import { nowIso, uid } from "@/lib/utils";
 import { syncReminders } from "@/db/actions";
 
@@ -192,6 +194,9 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
   }, [open, item]);
 
   const conflicts = findAllergyConflicts(f.name, allergies);
+  // Interactions with the patient's other current medicines.
+  const others = useLiveQuery(() => db.medications.filter((m) => !m.archivedAt && m.status === "active").toArray(), []) ?? [];
+  const interactions = f.name.trim().length >= 3 && f.status === "active" ? interactionsWith(f.name.trim(), others.filter((m) => m.id !== item?.id).map((m) => m.name)).map(interactionIssue) : [];
 
   const save = async () => {
     const data = {
@@ -241,6 +246,15 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
             ))}
             <p className="mt-1 text-xs">{t("Check with your doctor or pharmacist before taking this.")}</p>
           </Notice>
+        )}
+        {interactions.length > 0 && (
+          <div className="space-y-2">
+            <p className="flex items-center gap-1.5 text-sm font-extrabold">
+              <AlertTriangle className="h-4 w-4 text-red-700" />
+              {t("Interacts with your other medicines")}
+            </p>
+            <SafetyList issues={interactions} />
+          </div>
         )}
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("Dose")} required>

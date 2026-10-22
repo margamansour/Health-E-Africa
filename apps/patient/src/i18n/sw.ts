@@ -1051,4 +1051,18 @@ export const sw: Record<string, string> = {
   "Nutrition & dietetics": "Lishe",
   "Rehabilitation": "Urekebishaji",
   "Based on older official records, the facility's name and its level of care. Call to check what's offered now.": "Kulingana na rekodi rasmi za zamani, jina la kituo na ngazi yake ya huduma. Piga simu kuthibitisha huduma za sasa.",
+  // Medicine safety checks
+  "Allergy warning: {{title}}": "Onyo la mzio: {{title}}",
+  "Checks the most common and serious interactions only. Your pharmacist checks every request, and tell them about any herbal or over-the-counter medicines you take.": "Inakagua mwingiliano unaojulikana zaidi na hatari tu. Mfamasia hukagua kila ombi; mwambie kuhusu dawa za mitishamba au za dukani unazotumia.",
+  "Interaction": "Mwingiliano",
+  "Interacts with your other medicines": "Inaingiliana na dawa zako nyingine",
+  "No interactions found": "Hakuna mwingiliano uliopatikana",
+  "Safety check: {{count}} alert(s)": "Ukaguzi wa usalama: tahadhari {{count}}",
+  "Same type": "Aina moja",
+  "Serious": "Hatari",
+  "These alerts are sent with your request so the pharmacist can check them with you.": "Tahadhari hizi zinatumwa pamoja na ombi lako ili mfamasia azikague nawe.",
+  "Your {{meds}} current medicine(s) checked against each other and your {{allergies}} allerg(ies).": "Dawa zako {{meds}} za sasa zimekaguliwa dhidi ya nyingine na mizio yako {{allergies}}.",
+  "{{count}} medicine safety alert(s)": "Tahadhari {{count}} za usalama wa dawa",
+  "{{count}} safety alert(s) sent to the pharmacist to check": "Tahadhari {{count}} za usalama zimetumwa kwa mfamasia kukagua",
+  "{{kind}}: {{title}}": "{{kind}}: {{title}}",
 };
