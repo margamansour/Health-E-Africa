@@ -13,11 +13,11 @@ import { scanDocument, type ScanResult, type ScanStage } from "@/lib/scan";
 import { existingFor, saveScannedRecord, type ScanSelection } from "@/db/scanActions";
 import { extractionCount } from "@/domain/extract/parse";
 import { findAllergyConflicts } from "@/domain/allergy";
-import { interactionsWith } from "@/domain/interactions";
+import { conditionWarnings, interactionsWith } from "@/domain/interactions";
 import { flagFor } from "@/domain/labs";
 import { standardise } from "@/domain/units";
 import { useFormat, useProfile } from "@/lib/hooks";
-import { cn, formatBytes, today } from "@/lib/utils";
+import { ageOn, cn, formatBytes, today } from "@/lib/utils";
 
 const MAX_FILE = 15 * 1024 * 1024;
 
@@ -49,6 +49,7 @@ export function ScanUploadSheet({
   const fmt = useFormat();
   const profile = useProfile();
   const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
+  const currentConditions = useLiveQuery(() => db.conditions.filter((x) => !x.archivedAt && x.status === "active").toArray(), []) ?? [];
   const currentMeds = useLiveQuery(() => db.medications.filter((x) => !x.archivedAt && x.status === "active").toArray(), []) ?? [];
   const [step, setStep] = useState<Step>("pick");
   const [file, setFile] = useState<File | null>(null);
@@ -293,6 +294,7 @@ export function ScanUploadSheet({
                   // Against the patient's current medicines and the others in this document.
                   const others = [...new Set([...currentMeds.map((x) => x.name), ...e.medications.map((x) => x.name)])].filter((n) => n.toLowerCase() !== m.name.toLowerCase());
                   const clash = interactionsWith(m.name, others)[0];
+                  const caution = conditionWarnings(m.name, [...currentConditions.map((c) => c.name), ...e.conditions.map((c) => c.name)], profile?.dob ? ageOn(profile.dob) : undefined)[0];
                   return (
                     <Item
                       key={i}
@@ -307,7 +309,9 @@ export function ScanUploadSheet({
                           ? t("Allergy warning: {{substance}}", { substance: conflict.allergy.substance })
                           : clash
                             ? `${clash.kind === "duplicate" ? t("Same type") : t("Interaction")}: ${clash.meds.join(" + ")}. ${t(clash.effect)}`
-                            : undefined
+                            : caution
+                              ? `${t("Condition")}: ${caution.condition}. ${t(caution.effect)}`
+                              : undefined
                       }
                     />
                   );

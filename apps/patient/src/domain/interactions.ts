@@ -244,3 +244,112 @@ export function findInteractions(names: string[]): Interaction[] {
 export function interactionsWith(name: string, others: string[]): Interaction[] {
   return others.flatMap((o) => checkPair(name, o)).sort((x, y) => (x.severity === y.severity ? 0 : x.severity === "major" ? -1 : 1));
 }
+
+// ---------- Medicines and conditions ----------
+
+/** Extra groups only needed for condition checks. */
+const CONDITION_DRUG_GROUPS: Record<string, string[]> = {
+  nonselectiveBeta: ["propranolol", "carvedilol", "labetalol", "timolol", "sotalol", "nadolol"],
+  sedatingAntihistamine: ["chlorpheniramine", "chlorphenamine", "piriton", "promethazine", "phenergan", "diphenhydramine", "hydroxyzine", "cyproheptadine", "periactin"],
+  decongestant: ["pseudoephedrine", "phenylephrine", "sudafed", "actifed", "coldcap", "flu-gone"],
+  mefloquine: ["mefloquine", "lariam"],
+  glitazone: ["pioglitazone"],
+  highRiskPregnancy: ["warfarin", "enalapril", "lisinopril", "captopril", "ramipril", "perindopril", "losartan", "valsartan", "telmisartan", "irbesartan", "candesartan", "simvastatin", "atorvastatin", "rosuvastatin", "methotrexate", "valproate", "sodium valproate", "epilim", "isotretinoin", "roaccutane", "doxycycline", "tetracycline", "misoprostol", "cytotec"],
+};
+
+interface ConditionRule {
+  /** Words that identify the condition in the patient's list (lower case, matched within the name). */
+  condition: string[];
+  /** Plain-language name of the condition for the message. */
+  label: string;
+  group: string;
+  severity: Severity;
+  effect: string;
+  advice: string;
+}
+
+const KIDNEY = ["kidney disease", "kidney injury", "renal failure", "renal impairment", "ckd", "nephropathy"];
+const HEART_FAILURE = ["heart failure", "ccf", "cardiac failure", "cardiomyopathy"];
+const ULCER = ["peptic ulcer", "stomach ulcer", "duodenal ulcer", "gastric ulcer", "gi bleed", "gastrointestinal bleed"];
+const GASTRITIS = ["gastritis", "reflux", "gord", "gerd", "h. pylori"];
+const HEART_DISEASE = ["coronary", "heart attack", "myocardial infarction", "angina", "ischaemic heart", "ischemic heart", "stroke"];
+const LIVER = ["cirrhosis", "liver disease", "hepatitis", "fatty liver", "liver failure"];
+const ASK_C = "Ask your doctor or pharmacist whether it's right for you.";
+
+const CONDITION_RULES: ConditionRule[] = [
+  { condition: KIDNEY, label: "kidney disease", group: "nsaid", severity: "major", effect: "Anti-inflammatory painkillers can make kidney disease worse.", advice: "Usually avoided. Paracetamol is a safer painkiller. " + ASK_C },
+  { condition: KIDNEY, label: "kidney disease", group: "metformin", severity: "moderate", effect: "Metformin can build up when the kidneys work less well.", advice: "The dose depends on your kidney blood test (eGFR); it may need lowering or stopping." },
+  { condition: KIDNEY, label: "kidney disease", group: "potassiumSparing", severity: "moderate", effect: "Potassium can rise when the kidneys work less well.", advice: "Regular potassium blood tests are needed." },
+  { condition: KIDNEY, label: "kidney disease", group: "lithium", severity: "major", effect: "Lithium can build up to toxic levels.", advice: ASK_C },
+  { condition: HEART_FAILURE, label: "heart failure", group: "nsaid", severity: "major", effect: "Anti-inflammatory painkillers cause fluid build-up and can make heart failure worse.", advice: "Usually avoided. Paracetamol is a safer painkiller. " + ASK_C },
+  { condition: HEART_FAILURE, label: "heart failure", group: "rateCcb", severity: "major", effect: "Verapamil and diltiazem can weaken the heart further.", advice: ASK_C },
+  { condition: HEART_FAILURE, label: "heart failure", group: "glitazone", severity: "major", effect: "Pioglitazone causes fluid build-up.", advice: ASK_C },
+  { condition: HEART_DISEASE, label: "heart disease or stroke", group: "nsaid", severity: "moderate", effect: "Regular anti-inflammatory painkillers raise the risk of heart attack and stroke.", advice: "Use the lowest dose for the shortest time, or paracetamol instead. " + ASK_C },
+  { condition: ["hypertension", "high blood pressure"], label: "high blood pressure", group: "nsaid", severity: "moderate", effect: "Anti-inflammatory painkillers can raise blood pressure.", advice: "Use only for a short time and check your blood pressure." },
+  { condition: ["hypertension", "high blood pressure"], label: "high blood pressure", group: "decongestant", severity: "moderate", effect: "Decongestants in cold and flu remedies raise blood pressure.", advice: "Choose a cold remedy without a decongestant; ask your pharmacist." },
+  { condition: ULCER, label: "a stomach ulcer", group: "nsaid", severity: "major", effect: "Anti-inflammatory painkillers can cause ulcers to bleed.", advice: "Usually avoided. " + ASK_C },
+  { condition: ULCER, label: "a stomach ulcer", group: "aspirin", severity: "major", effect: "Aspirin can cause ulcers to bleed.", advice: ASK_C },
+  { condition: ULCER, label: "a stomach ulcer", group: "corticosteroid", severity: "moderate", effect: "Steroids can make ulcers worse.", advice: "A stomach-protecting medicine may be needed. " + ASK_C },
+  { condition: GASTRITIS, label: "gastritis or reflux", group: "nsaid", severity: "moderate", effect: "Anti-inflammatory painkillers irritate the stomach.", advice: "Take with food, for the shortest time, or use paracetamol instead." },
+  { condition: ["asthma"], label: "asthma", group: "nonselectiveBeta", severity: "major", effect: "This type of beta-blocker can trigger a severe asthma attack.", advice: "Usually avoided in asthma. " + ASK_C },
+  { condition: ["asthma"], label: "asthma", group: "betaBlocker", severity: "moderate", effect: "Beta-blockers can make asthma worse.", advice: ASK_C },
+  { condition: ["asthma"], label: "asthma", group: "nsaid", severity: "moderate", effect: "In some people with asthma, anti-inflammatory painkillers trigger wheezing.", advice: "If they've caused wheezing before, avoid them." },
+  { condition: ["copd", "chronic obstructive"], label: "COPD", group: "nonselectiveBeta", severity: "moderate", effect: "This type of beta-blocker can make breathing worse.", advice: ASK_C },
+  { condition: ["epilepsy", "seizure"], label: "epilepsy", group: "tramadol", severity: "major", effect: "Tramadol can trigger fits.", advice: "Usually avoided. " + ASK_C },
+  { condition: ["epilepsy", "seizure"], label: "epilepsy", group: "mefloquine", severity: "major", effect: "Mefloquine can trigger fits.", advice: "Choose a different malaria medicine." },
+  { condition: ["epilepsy", "seizure"], label: "epilepsy", group: "quinolone", severity: "moderate", effect: "These antibiotics can make fits more likely.", advice: ASK_C },
+  { condition: ["diabetes"], label: "diabetes", group: "corticosteroid", severity: "moderate", effect: "Steroids raise blood sugar.", advice: "Check your blood sugar more often; your diabetes medicine may need adjusting." },
+  { condition: LIVER, label: "liver disease", group: "paracetamol", severity: "moderate", effect: "The liver clears paracetamol more slowly.", advice: "Don't take more than 2 g (4 tablets of 500 mg) a day unless your doctor says so." },
+  { condition: LIVER, label: "liver disease", group: "nsaid", severity: "moderate", effect: "Anti-inflammatory painkillers raise the risk of bleeding and kidney problems in liver disease.", advice: "Usually avoided. " + ASK_C },
+  { condition: LIVER, label: "liver disease", group: "methotrexate", severity: "major", effect: "Methotrexate can damage the liver further.", advice: ASK_C },
+  { condition: ["gout"], label: "gout", group: "thiazide", severity: "moderate", effect: "Water tablets can trigger gout attacks.", advice: ASK_C },
+  { condition: ["gout"], label: "gout", group: "loopDiuretic", severity: "moderate", effect: "Water tablets can trigger gout attacks.", advice: ASK_C },
+  { condition: ["glaucoma"], label: "glaucoma", group: "tricyclic", severity: "moderate", effect: "Can raise eye pressure in some types of glaucoma.", advice: ASK_C },
+  { condition: ["glaucoma"], label: "glaucoma", group: "sedatingAntihistamine", severity: "moderate", effect: "Can raise eye pressure in some types of glaucoma.", advice: ASK_C },
+  { condition: ["enlarged prostate", "bph", "benign prostatic"], label: "an enlarged prostate", group: "sedatingAntihistamine", severity: "moderate", effect: "Can make it hard to pass urine.", advice: "Choose a non-drowsy antihistamine; ask your pharmacist." },
+  { condition: ["enlarged prostate", "bph", "benign prostatic"], label: "an enlarged prostate", group: "tricyclic", severity: "moderate", effect: "Can make it hard to pass urine.", advice: ASK_C },
+  { condition: ["enlarged prostate", "bph", "benign prostatic"], label: "an enlarged prostate", group: "decongestant", severity: "moderate", effect: "Decongestants can make it hard to pass urine.", advice: "Choose a cold remedy without a decongestant." },
+  { condition: ["osteoporosis"], label: "osteoporosis", group: "corticosteroid", severity: "moderate", effect: "Long-term steroids weaken bones further.", advice: "Bone protection may be needed if you take steroids for more than 3 months." },
+  { condition: ["pregnan"], label: "pregnancy", group: "highRiskPregnancy", severity: "major", effect: "This medicine can harm an unborn baby.", advice: "Speak to your doctor straight away; don't stop a medicine on your own." },
+  { condition: ["pregnan"], label: "pregnancy", group: "nsaid", severity: "major", effect: "Anti-inflammatory painkillers can harm the baby, especially after 20 weeks.", advice: "Paracetamol is usually preferred in pregnancy." },
+];
+
+/** Medicines to take extra care with from age 65 (based on the Beers criteria). */
+const OLDER_ADULT_RULES: { group: string; effect: string; advice: string }[] = [
+  { group: "benzodiazepine", effect: "Sedatives raise the risk of confusion, falls and broken bones in older people.", advice: ASK_C },
+  { group: "sedatingAntihistamine", effect: "Drowsy antihistamines can cause confusion, constipation and falls in older people.", advice: "A non-drowsy antihistamine is usually better." },
+  { group: "tricyclic", effect: "Can cause confusion, dizziness and falls in older people.", advice: ASK_C },
+  { group: "nsaid", effect: "Older people are more likely to get stomach bleeding and kidney problems from these painkillers.", advice: "Use the lowest dose for the shortest time, or paracetamol instead." },
+];
+
+export interface ConditionWarning {
+  med: string;
+  condition: string;
+  severity: Severity;
+  effect: string;
+  advice: string;
+}
+
+const inGroup = (name: string, group: string) => {
+  const members = CONDITION_DRUG_GROUPS[group] ?? DRUG_GROUPS[group] ?? [];
+  const n = norm(name);
+  return members.some((m) => (m.length <= 5 ? n.includes(` ${m} `) : n.includes(` ${m}`)));
+};
+
+/** Warnings for one medicine given the patient's conditions (and age, for older-adult cautions). */
+export function conditionWarnings(med: string, conditions: string[], age?: number): ConditionWarning[] {
+  const out: ConditionWarning[] = [];
+  const lower = conditions.map((c) => c.toLowerCase());
+  const seen = new Set<string>();
+  for (const r of CONDITION_RULES) {
+    const has = lower.find((c) => r.condition.some((k) => c.includes(k)));
+    if (!has || seen.has(r.label) || !inGroup(med, r.group)) continue;
+    seen.add(r.label); // one warning per condition: rules are ordered most serious first
+    out.push({ med, condition: r.label, severity: r.severity, effect: r.effect, advice: r.advice });
+  }
+  if (age != null && age >= 65) {
+    const r = OLDER_ADULT_RULES.find((x) => inGroup(med, x.group));
+    if (r) out.push({ med, condition: "age 65 and over", severity: "moderate", effect: r.effect, advice: r.advice });
+  }
+  return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "major" ? -1 : 1));
+}

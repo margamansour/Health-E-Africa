@@ -1065,4 +1065,6 @@ export const sw: Record<string, string> = {
   "{{count}} medicine safety alert(s)": "Tahadhari {{count}} za usalama wa dawa",
   "{{count}} safety alert(s) sent to the pharmacist to check": "Tahadhari {{count}} za usalama zimetumwa kwa mfamasia kukagua",
   "{{kind}}: {{title}}": "{{kind}}: {{title}}",
+  "Check before taking": "Kagua kabla ya kutumia",
+  "Your {{meds}} current medicine(s) checked against each other, your {{allergies}} allerg(ies) and {{conditions}} condition(s).": "Dawa zako {{meds}} za sasa zimekaguliwa dhidi ya nyingine, mizio yako {{allergies}} na hali {{conditions}} za kiafya.",
 };

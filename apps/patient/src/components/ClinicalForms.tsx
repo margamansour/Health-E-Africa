@@ -8,9 +8,9 @@ import { markEdited } from "@/domain/provenance";
 import type { Allergy, Condition, Medication, Severity } from "@/db/types";
 import { Button, Checkbox, ConfirmDialog, Field, Input, Notice, Select, Sheet, Textarea } from "./ui";
 import { findAllergyConflicts } from "@/domain/allergy";
-import { interactionsWith } from "@/domain/interactions";
-import { interactionIssue, SafetyList } from "./MedicineSafety";
-import { nowIso, uid } from "@/lib/utils";
+import { conditionWarnings, interactionsWith } from "@/domain/interactions";
+import { conditionIssue, interactionIssue, SafetyList } from "./MedicineSafety";
+import { ageOn, nowIso, uid } from "@/lib/utils";
 import { syncReminders } from "@/db/actions";
 
 // ---------- Condition ----------
@@ -196,7 +196,15 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
   const conflicts = findAllergyConflicts(f.name, allergies);
   // Interactions with the patient's other current medicines.
   const others = useLiveQuery(() => db.medications.filter((m) => !m.archivedAt && m.status === "active").toArray(), []) ?? [];
-  const interactions = f.name.trim().length >= 3 && f.status === "active" ? interactionsWith(f.name.trim(), others.filter((m) => m.id !== item?.id).map((m) => m.name)).map(interactionIssue) : [];
+  const conditionRows = useLiveQuery(() => db.conditions.filter((c) => !c.archivedAt && c.status === "active").toArray(), []) ?? [];
+  const profile = useLiveQuery(() => db.profile.get("me"), []);
+  const named = f.name.trim().length >= 3 && f.status === "active";
+  const interactions = named
+    ? [
+        ...conditionWarnings(f.name.trim(), conditionRows.map((c) => c.name), profile?.dob ? ageOn(profile.dob) : undefined).map(conditionIssue),
+        ...interactionsWith(f.name.trim(), others.filter((m) => m.id !== item?.id).map((m) => m.name)).map(interactionIssue),
+      ]
+    : [];
 
   const save = async () => {
     const data = {
@@ -251,7 +259,7 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
           <div className="space-y-2">
             <p className="flex items-center gap-1.5 text-sm font-extrabold">
               <AlertTriangle className="h-4 w-4 text-red-700" />
-              {t("Interacts with your other medicines")}
+              {t("Check before taking")}
             </p>
             <SafetyList issues={interactions} />
           </div>

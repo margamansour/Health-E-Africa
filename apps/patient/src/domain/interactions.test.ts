@@ -35,3 +35,26 @@ describe("medicine interactions", () => {
     expect(r).toHaveLength(2);
   });
 });
+
+import { conditionWarnings } from "./interactions";
+
+describe("medicines and conditions", () => {
+  it("flags medicines that are risky with a condition", () => {
+    expect(conditionWarnings("Ibuprofen 400 mg", ["Chronic kidney disease"])[0]).toMatchObject({ severity: "major", condition: "kidney disease" });
+    expect(conditionWarnings("Diclofenac", ["Heart failure"])[0]?.severity).toBe("major");
+    expect(conditionWarnings("Propranolol", ["Asthma"])[0]?.severity).toBe("major");
+    expect(conditionWarnings("Atenolol", ["Asthma"])[0]?.severity).toBe("moderate");
+    expect(conditionWarnings("Tramadol", ["Epilepsy"])[0]?.severity).toBe("major");
+    expect(conditionWarnings("Prednisolone", ["Type 2 diabetes"])[0]?.condition).toBe("diabetes");
+    expect(conditionWarnings("Metformin", ["Chronic kidney disease"])[0]?.severity).toBe("moderate");
+  });
+  it("one warning per condition, and age 65+ cautions", () => {
+    expect(conditionWarnings("Propranolol", ["Asthma"])).toHaveLength(1);
+    expect(conditionWarnings("Diazepam", [], 70)[0]?.condition).toBe("age 65 and over");
+    expect(conditionWarnings("Diazepam", [], 40)).toEqual([]);
+  });
+  it("quiet when nothing applies", () => {
+    expect(conditionWarnings("Amlodipine", ["Type 2 diabetes", "Hypertension"])).toEqual([]);
+    expect(conditionWarnings("Chlorpheniramine", ["Prostate cancer"])).toEqual([]);
+  });
+});

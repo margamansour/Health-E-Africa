@@ -118,7 +118,7 @@ export function PrescriptionsPage() {
                             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                             {a.kind === "allergy"
                               ? t("Allergy warning: {{title}}", { title: a.title })
-                              : t("{{kind}}: {{title}}", { kind: a.kind === "duplicate" ? t("Same type") : t("Interaction"), title: a.title })}
+                              : t("{{kind}}: {{title}}", { kind: a.kind === "duplicate" ? t("Same type") : a.kind === "condition" ? t("Condition") : t("Interaction"), title: a.title })}
                           </p>
                         ))}
                       </div>
@@ -284,8 +284,8 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
     const asked = type === "repeat" ? meds.map((m) => m.name) : acute.medicine.trim() ? [acute.medicine.trim()] : [];
     if (!asked.length) return [];
     const current = safety.meds.map((m) => m.name);
-    return checkMedicines([...new Set([...asked, ...current])], safety.allergies, { onlyInvolving: asked });
-  }, [type, meds, acute.medicine, safety.meds, safety.allergies]);
+    return checkMedicines([...new Set([...asked, ...current])], safety.allergies, { onlyInvolving: asked, conditions: safety.conditions, age: safety.age });
+  }, [type, meds, acute.medicine, safety.meds, safety.allergies, safety.conditions, safety.age]);
   const needsRx = type === "repeat" && meds.some((m) => m.prescriptionOnly) && !rxId;
 
   if (!type) return null;
