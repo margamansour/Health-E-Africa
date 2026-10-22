@@ -54,6 +54,8 @@ npm run build      # type-check + production build
 npm run build:offline -w apps/patient   # one self-contained HTML file for demos
 ```
 
+To test on an iPhone plugged into a Windows laptop by USB-C, see [docs/TESTING-ON-IPHONE.md](docs/TESTING-ON-IPHONE.md) (`npm run phone -w apps/patient`).
+
 `build:offline` writes `apps/patient/dist-offline/health-e-africa-demo.html`: the whole app (code, styles, font, icon) in one file. It makes no network requests, so it works with no connection, can be hosted anywhere, and can be shared as a demo. Data entered stays on that device.
 
 ## Code layout
