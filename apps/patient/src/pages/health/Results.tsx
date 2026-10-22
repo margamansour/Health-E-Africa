@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -116,6 +116,50 @@ function saveOpened(keys: string[]) {
   }
 }
 
+/**
+ * Sideways-scrolling area for a results table. Opens scrolled to the newest dates (on the right);
+ * swipe, or use the arrows, to go back in time.
+ */
+function SideScroll({ label, children }: { label: string; children: React.ReactNode }) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ start: true, end: true });
+  const update = () => {
+    const el = ref.current;
+    if (!el) return;
+    setEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  };
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollLeft = el.scrollWidth;
+    update();
+  }, []);
+  const by = (dx: number) => ref.current?.scrollBy({ left: dx, behavior: "smooth" });
+  const scrolls = !(edge.start && edge.end);
+  return (
+    <div className="mx-2 mb-2 overflow-hidden rounded-2xl bg-white">
+      {scrolls && (
+        <div className="flex items-center gap-2 border-b border-ink/5 px-2 py-1.5">
+          <button type="button" onClick={() => by(-160)} disabled={edge.start} aria-label={t("Older results")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream disabled:opacity-30">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="min-w-0 flex-1 text-center text-xs font-semibold text-ink/60">
+            {label}
+            <span className="block text-[11px] font-medium text-ink/45">{t("Oldest on the left. Swipe sideways to see earlier results.")}</span>
+          </span>
+          <button type="button" onClick={() => by(160)} disabled={edge.end} aria-label={t("Newer results")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream disabled:opacity-30">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+      <div ref={ref} onScroll={update} className="overflow-x-auto overscroll-x-contain">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** A test we can't convert, reported in two different units, is kept apart per unit. */
 const keyOf = (r: LabResult) => (standardUnit(r.analyte) ? r.analyte : `${r.analyte}␟${normUnit(r.unit)}`);
 const nameOf = (key: string) => key.split("␟")[0]!;
@@ -140,10 +184,6 @@ function GroupedTable({
   const labProvenance = useLabProvenance();
   // Panels start collapsed; the ones you open stay open while you move around the app.
   const [opened, setOpened] = useState<Set<string>>(() => new Set(readOpened()));
-  // How many date columns fit beside the test names, and which ones are showing per panel.
-  const perView = typeof window !== "undefined" && window.innerWidth >= 430 ? 3 : 2;
-  const [startAt, setStartAt] = useState<Record<string, number>>({});
-  const touchX = useRef<number | null>(null);
 
   const groups = useMemo(() => {
     const byGroup = new Map<string, LabResult[]>();
@@ -175,11 +215,8 @@ function GroupedTable({
     <div className="space-y-3">
       {groups.map((g) => {
         const open = opened.has(g.key);
-        // Start on the most recent dates; the arrows step one date older or newer.
-        const maxStart = Math.max(0, g.dates.length - perView);
-        const start = Math.min(startAt[g.key] ?? maxStart, maxStart);
-        const shown = g.dates.slice(start, start + perView);
-        const step = (by: number) => setStartAt((cur) => ({ ...cur, [g.key]: Math.max(0, Math.min(maxStart, start + by)) }));
+        // Every date, oldest on the left; the table scrolls sideways and opens on the newest.
+        const shown = g.dates;
         const short = (d: string) => fmt.date(d, { month: "short", year: "numeric" });
         return (
           <Card key={g.key} tone={g.tone} className="p-0">
@@ -201,50 +238,19 @@ function GroupedTable({
               <ChevronDown className={cn("h-5 w-5 shrink-0 transition", open && "rotate-180")} />
             </button>
             {open && (
-              <div
-                className="mx-2 mb-2 overflow-x-auto rounded-2xl bg-white"
-                // Swipe left for newer dates, right for older.
-                onTouchStart={(e) => (touchX.current = e.touches[0]!.clientX)}
-                onTouchEnd={(e) => {
-                  const dx = e.changedTouches[0]!.clientX - (touchX.current ?? e.changedTouches[0]!.clientX);
-                  touchX.current = null;
-                  if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
-                }}
+              <SideScroll
+                label={
+                  shown.length > 1
+                    ? `${short(shown[0]!)} → ${short(shown[shown.length - 1]!)} · ${t("{{n}} dates", { n: shown.length })}`
+                    : short(shown[0]!)
+                }
               >
-                {g.dates.length > perView && (
-                  <div className="flex items-center gap-2 border-b border-ink/5 px-2 py-1.5">
-                    <button
-                      type="button"
-                      onClick={() => step(-1)}
-                      disabled={start === 0}
-                      aria-label={t("Older results")}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream disabled:opacity-30"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <span className="min-w-0 flex-1 text-center text-xs font-semibold text-ink/60">
-                      {shown.length > 1 ? `${short(shown[0]!)} – ${short(shown[shown.length - 1]!)}` : short(shown[0]!)}
-                      <span className="block text-[11px] font-medium text-ink/45">
-                        {t("Dates {{a}}–{{b}} of {{n}}, oldest first", { a: start + 1, b: start + shown.length, n: g.dates.length })}
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => step(1)}
-                      disabled={start >= maxStart}
-                      aria-label={t("Newer results")}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream disabled:opacity-30"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-                <table className="w-full text-sm">
+                <table className="min-w-full text-sm">
                   <thead className="text-xs text-ink/55">
                     <tr>
                       <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left">{t("Test")}</th>
                       {shown.map((d) => (
-                        <th key={d} className="whitespace-nowrap px-3 py-2 text-right">
+                        <th key={d} className="min-w-[5.5rem] whitespace-nowrap px-3 py-2 text-right">
                           {fmt.date(d, { day: "numeric", month: "short", year: "2-digit" })}
                         </th>
                       ))}
@@ -296,7 +302,7 @@ function GroupedTable({
                     })}
                   </tbody>
                 </table>
-              </div>
+              </SideScroll>
             )}
           </Card>
         );

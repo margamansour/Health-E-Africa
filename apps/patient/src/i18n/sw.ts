@@ -1124,4 +1124,6 @@ export const sw: Record<string, string> = {
   "For you only, e.g. \"take with breakfast\". It doesn't change the prescription.": "Kwa ajili yako tu, k.m. \"tumia na kifungua kinywa\". Haibadilishi agizo la dawa.",
   "e.g. \"Doctor reduced it to 250 mg on 3 Oct\". It goes on your To do list to confirm with your prescriber; the prescription stays as it is until a new one is uploaded.": "k.m. \"Daktari alipunguza hadi 250 mg tarehe 3 Okt\". Itaongezwa kwenye orodha yako ya kufanya ili uthibitishe na aliyekuandikia; agizo linabaki lilivyo hadi jipya lipakiwe.",
   "Tap a card above to see another": "Gusa kadi iliyo juu kuona nyingine",
+  "{{n}} dates": "Tarehe {{n}}",
+  "Oldest on the left. Swipe sideways to see earlier results.": "Za zamani ziko kushoto. Telezesha pembeni kuona matokeo ya awali.",
 };
