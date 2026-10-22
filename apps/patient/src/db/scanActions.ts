@@ -1,6 +1,6 @@
 import { db } from "./db";
 import type { HealthRecord, LabResult, RecordCategory } from "./types";
-import type { ExtractedAction, ExtractedAllergy, ExtractedCondition, ExtractedFollowUp, ExtractedImmunisation, ExtractedLab, ExtractedMedication } from "@/domain/extract/parse";
+import type { ExtractedAction, ExtractedVital, ExtractedAllergy, ExtractedCondition, ExtractedFollowUp, ExtractedImmunisation, ExtractedLab, ExtractedMedication } from "@/domain/extract/parse";
 import type { Verification } from "@/domain/extract/verify";
 import { addRecord, notify, syncReminders } from "./actions";
 import { nowIso, parseDateKey, uid } from "@/lib/utils";
@@ -14,6 +14,7 @@ export interface ScanSelection {
   immunisations: ExtractedImmunisation[];
   followUps: ExtractedFollowUp[];
   actions: ExtractedAction[];
+  vitals: ExtractedVital[];
 }
 
 const same = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
@@ -85,7 +86,13 @@ export async function saveScannedRecord(input: {
   let added = 0;
   let tasks = 0;
 
-  await db.transaction("rw", [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.events, db.tasks], async () => {
+  await db.transaction("rw", [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.events, db.tasks, db.vitals], async () => {
+    for (const v of s.vitals) {
+      const dup = await db.vitals.where("date").equals(input.date).filter((x) => x.kind === v.kind && x.value === v.value && !x.archivedAt).count();
+      if (dup) continue;
+      await db.vitals.add({ id: uid(), kind: v.kind, value: v.value, value2: v.value2, date: input.date, createdAt: created, sourceRecordId: recordId });
+      added++;
+    }
     // To-dos from the document: its plan, actions for the GP, and medicine changes.
     const mentioned = (name: string) => s.actions.some((a) => a.text.toLowerCase().includes(name.toLowerCase()));
     const taskByDue = new Map<string, string>();

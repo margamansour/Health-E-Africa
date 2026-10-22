@@ -59,10 +59,15 @@ export function BookingSheet({ facility, onClose }: { facility: Facility | null;
         <p className="text-sm text-ink/65">
           {facility.name} · {facility.town}
         </p>
+        {facility.source === "kmhfl" && (
+          <Notice tone="blue">
+            {t("This clinic isn't connected to Health-e Africa yet. Your request will be sent to the clinic, and they'll confirm a time with you. In this demo you can play the clinic's part from My appointments.")}
+          </Notice>
+        )}
         <Field label={t("Service")}>
           {(id) => (
             <Select id={id} value={f.service} onChange={(e) => setF({ ...f, service: e.target.value })}>
-              {facility.services.map((s) => (
+              {(facility.services.length ? facility.services : ["General practice"]).map((s) => (
                 <option key={s} value={s}>
                   {t(s)}
                 </option>

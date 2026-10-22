@@ -36,6 +36,7 @@ export const HEALTH_LINKS: NavItem[] = [
   { to: "/summary", label: "Medical summary", description: "Your health at a glance, and sharing", icon: ClipboardList, tone: "bg-lavender" },
   { to: "/records", label: "Records", description: "Letters, reports and documents", icon: FileText, tone: "bg-peach" },
   { to: "/results", label: "Results", description: "Blood tests and lab results", icon: FlaskConical, tone: "bg-mint" },
+  { to: "/vitals", label: "Vitals", description: "Blood pressure, BMI, weight, pulse", icon: HeartPulse, tone: "bg-coral" },
   { to: "/immunisations", label: "Immunisations", description: "Vaccines given and due", icon: Syringe, tone: "bg-butter" },
 ];
 

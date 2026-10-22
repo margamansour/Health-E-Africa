@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useSearchParams } from "react-router";
-import { Activity, AlertTriangle, ChevronRight, Eye, Pencil, Pill, Plus, Share2, ShieldOff, Syringe, FlaskConical, Phone } from "lucide-react";
+import { Activity, AlertTriangle, HeartPulse, ChevronRight, Eye, Pencil, Pill, Plus, Share2, ShieldOff, Syringe, FlaskConical, Phone } from "lucide-react";
 import { db, logAudit } from "@/db/db";
 import type { Allergy, Condition, Immunisation, LabResult, Medication } from "@/db/types";
 import { Badge, Button, Card, ConfirmDialog, EmptyState, KeyValue, SectionTitle, Tabs } from "@/components/ui";
@@ -13,6 +13,8 @@ import { active, useFormat, useProfile, useProvenance } from "@/lib/hooks";
 import type { Provenance } from "@/domain/provenance";
 import { SourceDocumentSheet, SourceLabel, SourceSheet, wordsFor, type SourceTarget } from "@/components/SourceDocumentSheet";
 import { ImmunisationSheet } from "./Immunisations";
+import { AssessmentBadge, useLatestVitals } from "@/components/VitalsBits";
+import { assess, bmiCategory, formatVital } from "@/domain/vitals";
 import { ageOn, today } from "@/lib/utils";
 import { flagFor } from "@/domain/labs";
 import { immunisationState } from "@/domain/reminders";
@@ -238,6 +240,9 @@ function SummaryContent() {
         </details>
       )}
 
+      <SectionTitle action={<Link to="/vitals" className="text-sm font-medium text-brand-700">{t("All")}</Link>}>{t("Vitals")}</SectionTitle>
+      <SummaryVitals />
+
       <SectionTitle action={<Link to="/results" className="text-sm font-medium text-brand-700">{t("All results")}</Link>}>{t("Recent lab results")}</SectionTitle>
       {!latestLabs || latestLabs.length === 0 ? (
         <Card className="text-sm text-ink/55">{t("No lab results yet.")}</Card>
@@ -414,5 +419,45 @@ function ShareHistory({ onShare }: { onShare: () => void }) {
         }}
       />
     </>
+  );
+}
+
+/** Latest vitals: blood pressure, BMI, weight, pulse. */
+function SummaryVitals() {
+  const { t } = useTranslation();
+  const fmt = useFormat();
+  const profile = useProfile();
+  const { latest, bmi: bmiValue } = useLatestVitals();
+  const rows = [
+    latest.bp && { label: t("Blood pressure"), value: `${formatVital("bp", latest.bp.value, latest.bp.value2)} mmHg`, a: assess("bp", latest.bp.value, latest.bp.value2), date: latest.bp.date },
+    bmiValue != null && { label: t("BMI"), value: String(bmiValue), a: bmiCategory(bmiValue), date: latest.weight?.date },
+    latest.weight && { label: t("Weight"), value: `${formatVital("weight", latest.weight.value)} kg`, date: latest.weight.date },
+    latest.pulse && { label: t("Pulse"), value: `${formatVital("pulse", latest.pulse.value)} bpm`, a: assess("pulse", latest.pulse.value), date: latest.pulse.date },
+    latest.waist && { label: t("Waist"), value: `${formatVital("waist", latest.waist.value)} cm`, a: assess("waist", latest.waist.value, undefined, profile?.sex), date: latest.waist.date },
+  ].filter(Boolean) as { label: string; value: string; a?: ReturnType<typeof assess>; date?: string }[];
+  if (!rows.length)
+    return (
+      <Card className="text-sm text-ink/55">
+        <Link to="/vitals?add=1" className="font-semibold underline">
+          {t("Add your blood pressure, weight and height")}
+        </Link>
+      </Card>
+    );
+  return (
+    <Card className="divide-y divide-ink/5 p-0">
+      {rows.map((r) => (
+        <Link key={r.label} to="/vitals" className="flex items-center gap-3 px-4 py-3">
+          <HeartPulse className="h-4 w-4 shrink-0 text-red-500" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">{r.label}</span>
+            {r.date && <span className="block text-xs text-ink/55">{fmt.date(r.date)}</span>}
+          </span>
+          <span className="text-right">
+            <span className="block text-sm font-semibold">{r.value}</span>
+            <AssessmentBadge a={r.a} />
+          </span>
+        </Link>
+      ))}
+    </Card>
   );
 }

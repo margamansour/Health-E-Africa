@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, Keyboard, ListTodo, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, Camera, FlaskConical, HeartPulse, Keyboard, ListTodo, Paperclip, Pill, ScanText, Syringe, Upload } from "lucide-react";
 import { db } from "@/db/db";
 import type { RecordCategory } from "@/db/types";
 import { Button, Checkbox, Field, Input, Notice, Select, Sheet, Textarea } from "./ui";
@@ -14,6 +14,7 @@ import { existingFor, saveScannedRecord, type ScanSelection } from "@/db/scanAct
 import { extractionCount } from "@/domain/extract/parse";
 import { findAllergyConflicts } from "@/domain/allergy";
 import { conditionWarnings, interactionsWith } from "@/domain/interactions";
+import { assess, formatVital, VITALS } from "@/domain/vitals";
 import { flagFor } from "@/domain/labs";
 import { standardise } from "@/domain/units";
 import { useFormat, useProfile } from "@/lib/hooks";
@@ -106,6 +107,7 @@ export function ScanUploadSheet({
       e.labs.forEach((l, i) => (k[`labs:${i}`] = !ex.hasLab(l, e.date)));
       e.followUps.forEach((_, i) => (k[`followUps:${i}`] = true));
       e.actions.forEach((_, i) => (k[`actions:${i}`] = true));
+      e.vitals.forEach((_, i) => (k[`vitals:${i}`] = true));
       setKeep(k);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : String(err));
@@ -125,6 +127,7 @@ export function ScanUploadSheet({
       immunisations: sel("immunisations", e?.immunisations),
       followUps: sel("followUps", e?.followUps),
       actions: sel("actions", e?.actions),
+      vitals: sel("vitals", e?.vitals),
     };
   }, [scan, keep]);
   const selectedCount = Object.values(selection).reduce((s, a) => s + a.length, 0);
@@ -346,6 +349,22 @@ export function ScanUploadSheet({
                     dup={existing?.hasImmunisation(v)}
                   />
                 ))}
+              </ItemGroup>
+              <ItemGroup icon={<HeartPulse className="h-4 w-4" />} tone="bg-sage" title={t("Vitals")} count={e.vitals.length}>
+                {e.vitals.map((v, i) => {
+                  const a = assess(v.kind, v.value, v.value2, profile?.sex);
+                  return (
+                    <Item
+                      key={i}
+                      checked={!!keep[`vitals:${i}`]}
+                      onChange={toggle(`vitals:${i}`)}
+                      title={t(VITALS[v.kind].label)}
+                      detail={a ? t(a.label) : undefined}
+                      value={`${formatVital(v.kind, v.value, v.value2)} ${VITALS[v.kind].unit}`}
+                      valueTone={a && (a.tone === "high" || a.tone === "low") ? "text-red-600" : undefined}
+                    />
+                  );
+                })}
               </ItemGroup>
               <ItemGroup icon={<ListTodo className="h-4 w-4" />} tone="bg-rose" title={t("To do")} count={e.actions.length}>
                 {e.actions.map((a, i) => (

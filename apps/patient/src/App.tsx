@@ -15,6 +15,7 @@ import { HealthHub, MoreHub } from "@/pages/Hubs";
 const HomePage = lazy(() => import("@/pages/Home").then((m) => ({ default: m.HomePage })));
 const SummaryPage = lazy(() => import("@/pages/health/Summary").then((m) => ({ default: m.SummaryPage })));
 const RecordsPage = lazy(() => import("@/pages/health/Records").then((m) => ({ default: m.RecordsPage })));
+const VitalsPage = lazy(() => import("@/pages/health/Vitals").then((m) => ({ default: m.VitalsPage })));
 const TasksPage = lazy(() => import("@/pages/Tasks").then((m) => ({ default: m.TasksPage })));
 const ResultsPage = lazy(() => import("@/pages/health/Results").then((m) => ({ default: m.ResultsPage })));
 const ImmunisationsPage = lazy(() => import("@/pages/health/Immunisations").then((m) => ({ default: m.ImmunisationsPage })));
@@ -57,6 +58,7 @@ function AuthedRoutes() {
         <Route path="appointments" element={<AppointmentsPage />} />
         <Route path="prescriptions" element={<PrescriptionsPage />} />
         <Route path="tasks" element={<TasksPage />} />
+        <Route path="vitals" element={<VitalsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="bio" element={<BioPage />} />
         <Route path="settings" element={<SettingsPage />} />

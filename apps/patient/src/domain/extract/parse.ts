@@ -5,8 +5,9 @@ import { nearlySame } from "./fuzzy";
 import { normaliseCondition, type ExtractedCondition } from "./diagnosis";
 import { cleanSubstance, isAllergen } from "./allergen";
 import { parseAction, type ExtractedAction } from "./actions";
+import { parseVitals, type ExtractedVital } from "@/domain/vitals";
 
-export type { ExtractedAction };
+export type { ExtractedAction, ExtractedVital };
 
 export { normaliseCondition };
 
@@ -72,6 +73,8 @@ export interface Extraction {
   followUps: ExtractedFollowUp[];
   /** Things to do: book a review, repeat a test, change a medicine, see a specialist. */
   actions: ExtractedAction[];
+  /** Blood pressure, pulse, weight, height and other measurements written in the document. */
+  vitals: ExtractedVital[];
   notes?: string;
 }
 
@@ -171,8 +174,12 @@ function sectionise(lines: string[]): SectionLine[] {
       if (/^\s*:/.test(rest) || rest.trim() === "" || plain.length < 32) {
         matched = true;
         const content = rest.replace(/^\s*:\s*/, "").trim();
-        // An inline note like "On examination: chest clear" is skipped without ending the current section.
-        if (section === "other" && content) break;
+        // An inline note like "On examination: BP 138/86" doesn't end the current section; its
+        // content is kept (for measurements) but not read as part of that section.
+        if (section === "other" && content) {
+          out.push({ section: "other", text: content });
+          break;
+        }
         current = section;
         if (content) out.push({ section, text: content });
       }
@@ -509,6 +516,7 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
   const immunisations: ExtractedImmunisation[] = [];
   const followUps: ExtractedFollowUp[] = [];
   const actions: ExtractedAction[] = [];
+  const vitals: ExtractedVital[] = [];
   const addAction = (a: ExtractedAction | undefined) => {
     if (a && !actions.some((x) => x.text.toLowerCase() === a.text.toLowerCase())) actions.push(a);
   };
@@ -525,6 +533,8 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
       panel = heading;
       continue;
     }
+    // Measurements can appear anywhere ("On examination: BP 138/86, pulse 78").
+    for (const v of parseVitals(plain)) if (!vitals.some((x) => x.kind === v.kind)) vitals.push(v);
     const lab = parseLabLine(line, { strict: !looksLikeLab, panel });
     if (lab) {
       if (!labs.some((l) => l.analyte === lab.analyte)) labs.push(lab);
@@ -624,10 +634,11 @@ export function extractFromText(input: string | string[], ctx: ExtractContext): 
     immunisations,
     followUps: followUps.filter((f, i, arr) => arr.findIndex((x) => x.title === f.title) === i),
     actions,
+    vitals,
     notes: notes.length ? notes.join(" ") : undefined,
   };
 }
 
 export function extractionCount(e: Extraction) {
-  return e.labs.length + e.conditions.length + e.medications.length + e.allergies.length + e.immunisations.length + e.followUps.length + e.actions.length;
+  return e.labs.length + e.conditions.length + e.medications.length + e.allergies.length + e.immunisations.length + e.followUps.length + e.actions.length + e.vitals.length;
 }

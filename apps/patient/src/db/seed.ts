@@ -28,7 +28,7 @@ export async function loadSampleHealthData() {
 
   await db.transaction(
     "rw",
-    [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.records, db.ruleStatus, db.profile, db.tasks],
+    [db.conditions, db.allergies, db.medications, db.immunisations, db.labPanels, db.labResults, db.records, db.ruleStatus, db.profile, db.tasks, db.vitals],
     async () => {
       const p = await db.profile.get("me");
       if (p) {
@@ -106,6 +106,20 @@ export async function loadSampleHealthData() {
         { id: letterId, category: "letter", title: "Diabetes clinic review letter", date: m(-1), facilityName: "Uzima Family Clinic", source: "facility", notes: "Type 2 diabetes and hypertension. HbA1c improving. Continue metformin. Review in 3 months.", createdAt: created, seenAt: created },
         { id: uid(), category: "radiology", title: "Chest X-ray report", date: m(-14), facilityName: "Afya Bora Hospital", source: "facility", notes: "No active lung disease.", createdAt: created, seenAt: created },
         { id: prescriptionId, category: "prescription", title: "Repeat prescription — Metformin, Amlodipine, Atorvastatin", date: m(-2), facilityName: "Uzima Family Clinic", source: "facility", notes: "Valid for 6 months, 5 repeats.", createdAt: created, seenAt: created },
+      ]);
+
+      // Blood pressure and weight at clinic visits, plus a reading taken at home.
+      const bp = [[152, 96], [146, 92], [138, 88], [134, 84]];
+      const wt = [84, 83, 81.5, 80];
+      await db.vitals.bulkAdd([
+        ...visits.flatMap((v, i) => [
+          { id: uid(), kind: "bp" as const, value: bp[i]![0]!, value2: bp[i]![1]!, date: m(v), createdAt: created, sourceFacility: "Uzima Family Clinic" },
+          { id: uid(), kind: "weight" as const, value: wt[i]!, date: m(v), createdAt: created, sourceFacility: "Uzima Family Clinic" },
+          { id: uid(), kind: "pulse" as const, value: 82 - i * 2, date: m(v), createdAt: created, sourceFacility: "Uzima Family Clinic" },
+        ]),
+        { id: uid(), kind: "height", value: 165, date: m(-12), createdAt: created, sourceFacility: "Uzima Family Clinic" },
+        { id: uid(), kind: "waist", value: 94, date: m(-1), createdAt: created, sourceFacility: "Uzima Family Clinic" },
+        { id: uid(), kind: "bp", value: 131, value2: 83, date: d(-6), createdAt: created, notes: "Home monitor" },
       ]);
 
       // Things to do from the clinic letter.

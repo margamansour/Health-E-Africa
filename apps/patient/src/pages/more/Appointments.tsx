@@ -26,7 +26,12 @@ export function AppointmentsPage() {
   const { t } = useTranslation();
   const fmt = useFormat();
   const appts = useLiveQuery(() => db.appointments.orderBy("createdAt").reverse().toArray(), []);
-  const facilities = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").toArray(), []) ?? [];
+  // Only the facilities the patient has appointments with (the full list has 12,000+).
+  const facilities =
+    useLiveQuery(async () => {
+      const ids = [...new Set((await db.appointments.toArray()).map((a) => a.facilityId))];
+      return (await db.facilities.bulkGet(ids)).filter((f): f is NonNullable<typeof f> => !!f);
+    }, []) ?? [];
   const [filter, setFilter] = useState<Filter>("all");
   const [cancelling, setCancelling] = useState<Appointment | null>(null);
 

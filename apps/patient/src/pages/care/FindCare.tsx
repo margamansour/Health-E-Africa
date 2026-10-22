@@ -324,7 +324,7 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
   const profile = useProfile();
   if (!f) return null;
   const isMine = profile?.nominatedPharmacyId === f.id;
-  // Booking and prescription requests through the app only work with partner (demo) facilities for now.
+  // Prescription requests through the app only go to partner pharmacies for now; any clinic can be booked.
   const partner = f.source === "demo";
   const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.approxLocation ? `${f.name}, ${f.town}, ${f.county}, Kenya` : `${f.lat},${f.lng}`)}`;
   return (
@@ -334,32 +334,22 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
       title={f.name}
       footer={
         <div className="flex gap-2">
+          {/* Call or get directions */}
+          <a href={f.phone ? `tel:${f.phone}` : directions} target={f.phone ? undefined : "_blank"} rel="noreferrer" className="flex">
+            <Button variant="outline" size="icon" aria-label={f.phone ? t("Call") : t("Directions")}>
+              {f.phone ? <Phone className="h-4 w-4" /> : <Navigation className="h-4 w-4" />}
+            </Button>
+          </a>
           <Button variant="secondary" className="flex-1" onClick={() => onShare(f)}>
             <Share2 className="h-4 w-4" />
             {t("Share summary")}
           </Button>
-          {!partner ? (
-            f.phone ? (
-              <a href={`tel:${f.phone}`} className="flex flex-1">
-                <Button className="flex-1">
-                  <Phone className="h-4 w-4" />
-                  {t("Call")}
-                </Button>
-              </a>
-            ) : (
-              <a href={directions} target="_blank" rel="noreferrer" className="flex flex-1">
-                <Button className="flex-1">
-                  <Navigation className="h-4 w-4" />
-                  {t("Directions")}
-                </Button>
-              </a>
-            )
-          ) : f.type !== "pharmacy" ? (
+          {f.type !== "pharmacy" ? (
             <Button className="flex-1" onClick={() => onBook(f)}>
               <CalendarPlus className="h-4 w-4" />
               {t("Book")}
             </Button>
-          ) : (
+          ) : partner ? (
             <Button
               className="flex-1"
               disabled={isMine}
@@ -371,6 +361,13 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
               <Pill className="h-4 w-4" />
               {isMine ? t("Your pharmacy") : t("Make my pharmacy")}
             </Button>
+          ) : (
+            <a href={directions} target="_blank" rel="noreferrer" className="flex flex-1">
+              <Button className="flex-1">
+                <Navigation className="h-4 w-4" />
+                {t("Directions")}
+              </Button>
+            </a>
           )}
         </div>
       }

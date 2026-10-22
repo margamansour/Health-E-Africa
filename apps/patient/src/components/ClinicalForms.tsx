@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLiveQuery } from "dexie-react-hooks";
 import { toast } from "sonner";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Lock, PencilLine } from "lucide-react";
 import { db } from "@/db/db";
 import { markEdited } from "@/domain/provenance";
 import type { Allergy, Condition, Medication, Severity } from "@/db/types";
@@ -194,6 +194,18 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
   }, [open, item]);
 
   const conflicts = findAllergyConflicts(f.name, allergies);
+  // A medicine from a prescription, clinic letter or the clinic itself can't have its name, dose or
+  // frequency changed here: the record must match what was prescribed. The patient can still say
+  // they've stopped, add their own note, or report a change for the prescriber to confirm.
+  const locked = !!item && !!(item.sourceRecordId || item.sourceFacility);
+  const [note, setNote] = useState("");
+  const [report, setReport] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) {
+      setNote(item?.patientNote ?? "");
+      setReport(null);
+    }
+  }, [open, item]);
   // Interactions with the patient's other current medicines.
   const others = useLiveQuery(() => db.medications.filter((m) => !m.archivedAt && m.status === "active").toArray(), []) ?? [];
   const conditionRows = useLiveQuery(() => db.conditions.filter((c) => !c.archivedAt && c.status === "active").toArray(), []) ?? [];
@@ -207,6 +219,24 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
     : [];
 
   const save = async () => {
+    if (locked && item) {
+      await db.medications.update(item.id, { status: f.status, patientNote: note.trim() || undefined });
+      if (report?.trim()) {
+        await db.medications.update(item.id, { reportedChange: { text: report.trim(), at: nowIso() } });
+        await db.tasks.add({
+          id: uid(),
+          kind: "medication",
+          title: `Ask your prescriber to confirm a change to ${item.name} ${item.dose}: ${report.trim()}`,
+          forGp: true,
+          sourceRecordId: item.sourceRecordId,
+          createdAt: nowIso(),
+        });
+        toast.success(t("Change reported. It's on your To do list to confirm with your prescriber."));
+      } else toast.success(t("Saved"));
+      void syncReminders();
+      onClose();
+      return;
+    }
     const data = {
       ...f,
       name: f.name.trim(),
@@ -229,7 +259,7 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
       title={item ? t("Edit medicine") : t("Add medicine")}
       footer={
         <div className="flex gap-2">
-          {item && (
+          {item && !locked && (
             <Button variant="ghost" className="text-red-600" onClick={() => setConfirm(true)}>
               {t("Remove")}
             </Button>
@@ -241,8 +271,16 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
       }
     >
       <div className="space-y-4">
+        {locked && (
+          <Notice tone="blue" icon={<Lock className="h-4 w-4" />}>
+            <span className="block font-semibold">{t("From your prescription")}</span>
+            <span className="block text-xs">
+              {t("The name, dose and how often can't be changed here, so your record always matches what was prescribed. If something has changed, report it below or upload the new prescription.")}
+            </span>
+          </Notice>
+        )}
         <Field label={t("Medicine name")} required>
-          {(id) => <Input id={id} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={t("e.g. Metformin")} />}
+          {(id) => <Input id={id} value={f.name} disabled={locked} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={t("e.g. Metformin")} />}
         </Field>
         {conflicts.length > 0 && (
           <Notice tone="red" icon={<AlertTriangle className="h-4 w-4" />}>
@@ -266,23 +304,23 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
         )}
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("Dose")} required>
-            {(id) => <Input id={id} value={f.dose} onChange={(e) => setF({ ...f, dose: e.target.value })} placeholder="500 mg" />}
+            {(id) => <Input id={id} value={f.dose} disabled={locked} onChange={(e) => setF({ ...f, dose: e.target.value })} placeholder="500 mg" />}
           </Field>
           <Field label={t("Type")}>
             {(id) => (
-              <Select id={id} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as Medication["type"] })}>
+              <Select id={id} value={f.type} disabled={locked} onChange={(e) => setF({ ...f, type: e.target.value as Medication["type"] })}>
                 <option value="repeat">{t("Repeat (regular)")}</option>
                 <option value="acute">{t("Acute (short course)")}</option>
               </Select>
             )}
           </Field>
         </div>
-        <Field label={t("How often")}>{(id) => <Input id={id} value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value })} placeholder={t("e.g. Twice daily with meals")} />}</Field>
+        <Field label={t("How often")}>{(id) => <Input id={id} value={f.frequency} disabled={locked} onChange={(e) => setF({ ...f, frequency: e.target.value })} placeholder={t("e.g. Twice daily with meals")} />}</Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label={t("Started")}>{(id) => <Input id={id} type="date" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} />}</Field>
-          <Field label={t("Review date")}>{(id) => <Input id={id} type="date" value={f.reviewDate} onChange={(e) => setF({ ...f, reviewDate: e.target.value })} />}</Field>
+          <Field label={t("Started")}>{(id) => <Input id={id} type="date" value={f.startDate} disabled={locked} onChange={(e) => setF({ ...f, startDate: e.target.value })} />}</Field>
+          <Field label={t("Review date")}>{(id) => <Input id={id} type="date" value={f.reviewDate} disabled={locked} onChange={(e) => setF({ ...f, reviewDate: e.target.value })} />}</Field>
         </div>
-        <Field label={t("Prescribed by")}>{(id) => <Input id={id} value={f.prescriber} onChange={(e) => setF({ ...f, prescriber: e.target.value })} />}</Field>
+        <Field label={t("Prescribed by")}>{(id) => <Input id={id} value={f.prescriber} disabled={locked} onChange={(e) => setF({ ...f, prescriber: e.target.value })} />}</Field>
         <Field label={t("Status")}>
           {(id) => (
             <Select id={id} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Medication["status"] })}>
@@ -291,9 +329,33 @@ export function MedicationSheet({ open, onClose, item }: { open: boolean; onClos
             </Select>
           )}
         </Field>
-        <Checkbox checked={f.prescriptionOnly} onChange={(v) => setF({ ...f, prescriptionOnly: v })}>
-          {t("Prescription-only medicine")}
-        </Checkbox>
+        {!locked && (
+          <Checkbox checked={f.prescriptionOnly} onChange={(v) => setF({ ...f, prescriptionOnly: v })}>
+            {t("Prescription-only medicine")}
+          </Checkbox>
+        )}
+        {locked && (
+          <>
+            <Field label={t("My note")} hint={t("For you only, e.g. \"take with breakfast\". It doesn't change the prescription.")}>
+              {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} />}
+            </Field>
+            {item?.reportedChange && (
+              <Notice tone="amber">
+                {t("You reported a change on {{date}}: “{{text}}”. Waiting for your prescriber to confirm.", { date: new Date(item.reportedChange.at).toLocaleDateString(), text: item.reportedChange.text })}
+              </Notice>
+            )}
+            {report === null ? (
+              <Button variant="outline" className="w-full" onClick={() => setReport("")}>
+                <PencilLine className="h-4 w-4" />
+                {t("Report a change to this medicine")}
+              </Button>
+            ) : (
+              <Field label={t("What has changed?")} hint={t("e.g. \"Doctor reduced it to 250 mg on 3 Oct\". It goes on your To do list to confirm with your prescriber; the prescription stays as it is until a new one is uploaded.")}>
+                {(id) => <Textarea id={id} value={report} onChange={(e) => setReport(e.target.value)} />}
+              </Field>
+            )}
+          </>
+        )}
       </div>
       <ConfirmDialog
         open={confirm}

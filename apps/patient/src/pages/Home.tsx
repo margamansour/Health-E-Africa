@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
-import { Activity, AlertTriangle, ArrowRight, ListTodo, Bell, ChevronRight, ClipboardList, Droplet, FilePlus2, FlaskConical, HeartHandshake, Inbox, Pill, Search } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, ListTodo, Bell, ChevronRight, ClipboardList, FilePlus2, FlaskConical, HeartPulse, Inbox, Pill, Search } from "lucide-react";
 import { db } from "@/db/db";
 import { Card, type CardTone } from "@/components/ui";
 import { Page } from "@/components/layout";
@@ -10,6 +10,8 @@ import { active, useFormat, useProfile } from "@/lib/hooks";
 import { cn, initials } from "@/lib/utils";
 import type { MedRequestStatus, Profile } from "@/db/types";
 import { TaskCard, useOpenTasks } from "@/pages/Tasks";
+import { AssessmentBadge, useLatestVitals } from "@/components/VitalsBits";
+import { assess, bmiCategory, formatVital } from "@/domain/vitals";
 
 const OPEN_REQUEST_STATES: MedRequestStatus[] = ["submitted", "awaiting_prescriber", "approved", "dispensed", "out_for_delivery"];
 
@@ -27,15 +29,52 @@ function completeness(p: Profile, counts: { allergies: number; meds: number; con
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
-function Ring({ pct }: { pct: number }) {
+function Ring({ pct, size = 112 }: { pct: number; size?: number }) {
   const r = 42;
   const c = 2 * Math.PI * r;
   return (
-    <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90" aria-hidden="true">
-      <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(35,32,47,0.12)" strokeWidth="9" />
-      <circle cx="50" cy="50" r={r} fill="none" stroke="#23202f" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} />
-      <circle cx="50" cy="50" r="31" fill="#fff" />
+    <svg viewBox="0 0 100 100" style={{ width: size, height: size }} className="-rotate-90" aria-hidden="true">
+      <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(35,32,47,0.12)" strokeWidth="11" />
+      <circle cx="50" cy="50" r={r} fill="none" stroke="#23202f" strokeWidth="11" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} />
+      <circle cx="50" cy="50" r="34" fill="#fff" />
     </svg>
+  );
+}
+
+/** Latest blood pressure, BMI, weight and pulse; taps through to the Vitals page. */
+function VitalsStrip() {
+  const { t } = useTranslation();
+  const profile = useProfile();
+  const { latest, bmi: bmiValue } = useLatestVitals();
+  const bp = latest.bp;
+  const items = [
+    { label: t("Blood pressure"), value: bp ? formatVital("bp", bp.value, bp.value2) : "—", a: bp ? assess("bp", bp.value, bp.value2, profile?.sex) : undefined },
+    { label: t("BMI"), value: bmiValue != null ? String(bmiValue) : "—", a: bmiValue != null ? bmiCategory(bmiValue) : undefined },
+    { label: t("Weight"), value: latest.weight ? `${formatVital("weight", latest.weight.value)} kg` : "—" },
+    { label: t("Pulse"), value: latest.pulse ? `${formatVital("pulse", latest.pulse.value)}` : "—", a: latest.pulse ? assess("pulse", latest.pulse.value) : undefined },
+  ];
+  return (
+    <Link to="/vitals" className="block rounded-[28px] bg-white p-4 shadow-[0_2px_12px_-6px_rgba(35,32,47,0.12)]">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="flex items-center gap-2 text-[15px] font-extrabold">
+          <HeartPulse className="h-4 w-4 text-red-600" />
+          {t("Vitals")}
+        </span>
+        <span className="flex items-center gap-1 text-sm font-bold">
+          {bp || bmiValue != null ? t("Check") : t("Add")}
+          <ArrowRight className="h-4 w-4" />
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {items.map((i) => (
+          <div key={i.label} className="min-w-0 rounded-2xl bg-cream px-1.5 py-2 text-center">
+            <p className="truncate text-[10px] font-bold text-ink/55">{i.label}</p>
+            <p className="truncate text-sm font-extrabold">{i.value}</p>
+            {i.a && <AssessmentBadge a={i.a} className="mt-0.5 inline-block max-w-full truncate px-1.5 text-[9px]" />}
+          </div>
+        ))}
+      </div>
+    </Link>
   );
 }
 
@@ -85,23 +124,20 @@ export function HomePage() {
           <p className="text-xs font-medium text-ink/55">{greeting}</p>
           <p className="truncate text-lg font-extrabold">{firstName}!</p>
         </div>
-        <Link to="/find-care" className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_2px_12px_-6px_rgba(35,32,47,0.15)]" aria-label={t("Find care")}>
-          <Search className="h-5 w-5" />
-        </Link>
         <Link to="/notifications" className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_2px_12px_-6px_rgba(35,32,47,0.15)]" aria-label={t("Notifications")}>
           <Bell className="h-5 w-5" />
           {hasUnread && <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-white" />}
         </Link>
       </div>
 
-      <h1 className="text-[34px] font-extrabold leading-[1.05] tracking-tight">
+      <h1 className="text-[28px] font-extrabold leading-[1.05] tracking-tight">
         {t("Your health,")}
         <br />
         <span className="font-semibold italic">{t("all in one place")}</span>
       </h1>
 
-      {/* Quick action pills */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      {/* Quick actions: four across, always fitting the screen */}
+      <div className="grid grid-cols-4 gap-2">
         {[
           // One upload covers letters, prescriptions and lab results (they're filed automatically).
           { to: "/records?add=1", icon: FilePlus2, label: "Upload record", dark: true },
@@ -113,16 +149,16 @@ export function HomePage() {
             key={q.to}
             to={q.to}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-full py-2 pl-2 pr-4 text-sm font-semibold",
+              "relative flex min-w-0 flex-col items-center gap-1.5 rounded-[22px] px-1 py-3 text-center",
               q.dark ? "bg-ink text-white" : "bg-white text-ink shadow-[0_2px_12px_-6px_rgba(35,32,47,0.12)]",
             )}
           >
-            <span className={cn("flex h-8 w-8 items-center justify-center rounded-full", q.dark ? "bg-white/15" : "bg-cream")}>
-              <q.icon className="h-4 w-4" />
+            <span className={cn("flex h-10 w-10 items-center justify-center rounded-full", q.dark ? "bg-white/15" : "bg-cream")}>
+              <q.icon className="h-5 w-5" />
             </span>
-            {t(q.label)}
+            <span className="text-[11px] font-bold leading-tight">{t(q.label)}</span>
             {!!q.count && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-[11px] font-bold text-ink" aria-label={t("{{n}} request(s) in progress", { n: q.count })}>
+              <span className="absolute right-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-[11px] font-bold text-ink" aria-label={t("{{n}} request(s) in progress", { n: q.count })}>
                 {q.count}
               </span>
             )}
@@ -152,37 +188,6 @@ export function HomePage() {
         </Card>
       )}
 
-      {/* Passport hero */}
-      <Card tone="lavender" onClick={() => navigate(pct < 100 ? "/bio" : "/summary")} className="p-5">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1 space-y-2">
-            <p className="text-sm font-semibold text-ink/70">{t("Health passport")}</p>
-            <p className="text-5xl font-extrabold leading-none tracking-tight">
-              {pct}
-              <span className="text-2xl">%</span>
-            </p>
-            <p className="text-sm font-semibold">{pct < 100 ? t("Profile complete — finish it") : t("Profile complete")}</p>
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">
-                <Droplet className="h-3 w-3 text-red-600" />
-                {profile.bloodGroup ?? t("Blood group?")}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">
-                <HeartHandshake className="h-3 w-3" />
-                {profile.donorStatus === "registered" ? t("Organ donor") : t("Donor status not set")}
-              </span>
-            </div>
-          </div>
-          <div className="relative shrink-0">
-            <Ring pct={pct} />
-            <span className="absolute inset-0 flex flex-col items-center justify-center text-center leading-tight">
-              <span className="text-lg font-extrabold">{data.allergies.length + data.meds.length + data.conditions.length}</span>
-              <span className="text-[10px] font-semibold text-ink/60">{t("items")}</span>
-            </span>
-          </div>
-        </div>
-      </Card>
-
       {data.unseen > 0 && (
         <Card tone="sky" onClick={() => navigate("/records")} className="flex items-center gap-3 py-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70">
@@ -200,6 +205,26 @@ export function HomePage() {
         <Tile tone="mint" icon={<Activity className="h-4 w-4" />} title={t("Conditions")} items={data.conditions.map((c) => c.name)} empty={t("None recorded")} onClick={() => navigate("/summary#conditions")} />
         <Tile tone="peach" icon={<FlaskConical className="h-4 w-4" />} title={t("Results")} items={[]} empty={t("Blood tests and lab results")} onClick={() => navigate("/results")} />
       </div>
+
+      {/* Vitals at a glance */}
+      <VitalsStrip />
+
+      {/* Health passport: a slim progress line, not the focus of the screen */}
+      <Link to={pct < 100 ? "/bio" : "/summary"} className="flex items-center gap-3 rounded-full bg-lavender/70 py-2 pl-2 pr-4">
+        <span className="relative shrink-0">
+          <Ring pct={pct} size={40} />
+          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-extrabold">{pct}%</span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold">{t("Health passport")}</span>
+          <span className="block truncate text-xs text-ink/60">
+            {pct < 100 ? t("Profile complete — finish it") : t("Profile complete")}
+            {profile.bloodGroup ? ` · ${profile.bloodGroup}` : ""}
+            {profile.donorStatus === "registered" ? ` · ${t("Organ donor")}` : ""}
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0" />
+      </Link>
 
       {/* Coming up */}
       <Card tone="sage" className="space-y-2 p-4">

@@ -11,7 +11,8 @@ import { Page, PageHeader } from "@/components/layout";
 import { MedicationSheet } from "@/components/ClinicalForms";
 import { checkMedicines, MedicineSafetyCard, SafetyList, useMedicineSafety } from "@/components/MedicineSafety";
 import { cancelMedRequest, simulatePharmacyReject, simulatePharmacyStep, submitMedRequest } from "@/db/actions";
-import { active, useFormat, useProfile } from "@/lib/hooks";
+import { active, useFormat, useProfile, useProvenance } from "@/lib/hooks";
+import { SourceLabel } from "@/components/SourceDocumentSheet";
 import { today } from "@/lib/utils";
 
 export const MED_STATUS: Record<MedRequestStatus, { label: string; tone: "amber" | "green" | "red" | "slate" | "blue" | "purple" }> = {
@@ -35,6 +36,7 @@ export function PrescriptionsPage() {
   const profile = useProfile();
   const meds = active(useLiveQuery(() => db.medications.toArray(), []));
   const safety = useMedicineSafety();
+  const provenance = useProvenance();
   const requests = useLiveQuery(() => db.medRequests.orderBy("createdAt").reverse().toArray(), []) ?? [];
   const facilities = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").toArray(), []) ?? [];
   const [selected, setSelected] = useState<string[]>([]);
@@ -104,6 +106,8 @@ export function PrescriptionsPage() {
                               {m.name} {m.dose}
                             </p>
                             <p className="text-xs text-ink/55">{m.frequency}</p>
+                            <SourceLabel p={provenance(m)} className="mt-0.5 max-w-full" />
+                            {m.reportedChange && <p className="text-[11px] font-semibold text-amber-800">{t("Change reported: waiting for your prescriber")}</p>}
                           </button>
                           {pending && <Badge tone="amber">{t("Requested")}</Badge>}
                         </div>
@@ -292,12 +296,24 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
   const valid = pharmacyId && (delivery === "collect" || address.trim()) && (type === "repeat" ? meds.length > 0 : acute.details.trim()) && (conflicts.length === 0 || ackAllergy);
 
   const submit = async () => {
+    const notes = [
+      ...conflicts.map((c) => `${c.title}: ${c.effect}`),
+      // The pharmacist dispenses against the prescription, never the dose typed into the app.
+      ...(type === "repeat"
+        ? meds.filter((m) => !m.sourceRecordId && !m.sourceFacility).map((m) => `${m.name} ${m.dose}: typed in by the patient, not from a verified prescription`)
+        : []),
+    ];
     await submitMedRequest({
       pharmacyId,
       type,
-      items: type === "repeat" ? meds.map((m) => ({ medicationId: m.id, name: m.name, dose: m.dose })) : acute.medicine ? [{ name: acute.medicine }] : [],
+      items:
+        type === "repeat"
+          ? meds.map((m) => ({ medicationId: m.id, name: m.name, dose: m.dose, patientEntered: !m.sourceRecordId && !m.sourceFacility }))
+          : acute.medicine
+            ? [{ name: acute.medicine, patientEntered: true }]
+            : [],
       acuteDetails: type === "acute" ? acute.details.trim() : undefined,
-      safetyNotes: conflicts.length ? conflicts.map((c) => `${c.title}: ${c.effect}`) : undefined,
+      safetyNotes: notes.length ? notes : undefined,
       prescriptionRecordId: type === "repeat" ? rxId || undefined : undefined,
       deliveryAddress: delivery === "delivery" ? address.trim() : "",
       delivery,
@@ -322,9 +338,10 @@ function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute
         {type === "repeat" ? (
           <ul className="space-y-1 rounded-2xl bg-cream p-3 text-sm">
             {meds.map((m) => (
-              <li key={m.id} className="flex justify-between">
-                <span>
+              <li key={m.id} className="flex items-center justify-between gap-2">
+                <span className="min-w-0">
                   {m.name} {m.dose}
+                  {!m.sourceRecordId && !m.sourceFacility && <span className="block text-[11px] font-semibold text-amber-800">{t("Typed in by you: the pharmacist will check it against your prescription")}</span>}
                 </span>
                 {m.prescriptionOnly && <Badge>{t("Prescription only")}</Badge>}
               </li>

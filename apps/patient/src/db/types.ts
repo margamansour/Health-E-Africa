@@ -84,6 +84,10 @@ export interface Medication extends Archivable, FromDocument {
   reviewDate?: string;
   prescriber?: string;
   instructions?: string;
+  /** The patient's own note (e.g. "take with breakfast"); doesn't change the prescription. */
+  patientNote?: string;
+  /** A change the patient reported for their prescriber to confirm (the prescription itself is unchanged). */
+  reportedChange?: { text: string; at: string };
   createdAt: string;
 }
 
@@ -231,7 +235,8 @@ export interface MedRequest {
   id: ID;
   pharmacyId: ID;
   type: "repeat" | "acute";
-  items: { medicationId?: ID; name: string; dose?: string }[];
+  /** patientEntered: typed in by the patient, not taken from a prescription or clinic. */
+  items: { medicationId?: ID; name: string; dose?: string; patientEntered?: boolean }[];
   acuteDetails?: string;
   /** Allergy and interaction alerts shown to the patient, passed on for the pharmacist to check. */
   safetyNotes?: string[];
@@ -348,4 +353,17 @@ export interface Task extends Archivable {
   sourceRecordId?: ID;
   createdAt: string;
   doneAt?: string;
+}
+
+/** A vital sign or body measurement: blood pressure, pulse, weight, height, temperature, SpO2, waist. */
+export interface VitalSign extends Archivable, FromDocument {
+  id: ID;
+  kind: "bp" | "pulse" | "weight" | "height" | "temperature" | "spo2" | "waist";
+  /** Systolic for blood pressure. */
+  value: number;
+  /** Diastolic for blood pressure. */
+  value2?: number;
+  date: string;
+  notes?: string;
+  createdAt: string;
 }

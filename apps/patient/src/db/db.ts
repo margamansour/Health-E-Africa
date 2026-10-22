@@ -21,6 +21,7 @@ import type {
   RuleStatus,
   Setting,
   Task,
+  VitalSign,
   ShareAccess,
   StoredFile,
   SummaryShare,
@@ -52,6 +53,7 @@ export class HealthDB extends Dexie {
   ruleStatus!: EntityTable<RuleStatus, "ruleId">;
   settings!: EntityTable<Setting, "key">;
   tasks!: EntityTable<Task, "id">;
+  vitals!: EntityTable<VitalSign, "id">;
 
   constructor(name = "health-e-africa") {
     super(name);
@@ -109,6 +111,8 @@ export class HealthDB extends Dexie {
     );
     // v5: to-do items for the patient, taken from documents (plans, actions for GP, medicine changes).
     this.version(5).stores({ tasks: "id, doneAt, dueDate, sourceRecordId, createdAt" });
+    // v6: vital signs and body measurements.
+    this.version(6).stores({ vitals: "id, kind, date, sourceRecordId" });
   }
 }
 
@@ -140,6 +144,7 @@ const AUDITED = [
   "shares",
   "consents",
   "tasks",
+  "vitals",
 ] as const;
 
 export const ACTOR = "patient";
