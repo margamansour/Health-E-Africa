@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BadgeCheck, ChartLine as LineChartIcon, ChevronDown, ClipboardPaste, FlaskConical, Plus, Trash2 } from "lucide-react";
+import { BadgeCheck, ChartLine as LineChartIcon, ChevronDown, ChevronLeft, ChevronRight, ClipboardPaste, FlaskConical, Plus, Trash2 } from "lucide-react";
 import { db } from "@/db/db";
 import type { LabPanel, LabResult } from "@/db/types";
 import { Button, Card, EmptyState, Field, Input, Notice, Select, Sheet, Tabs, Textarea } from "@/components/ui";
@@ -100,6 +100,22 @@ function range(r: Pick<LabResult, "refLow" | "refHigh">) {
   return "";
 }
 
+const OPENED_KEY = "results-open-panels";
+function readOpened(): string[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(OPENED_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+function saveOpened(keys: string[]) {
+  try {
+    sessionStorage.setItem(OPENED_KEY, JSON.stringify(keys));
+  } catch {
+    // Storage may be unavailable (private mode); panels just start collapsed again.
+  }
+}
+
 /** A test we can't convert, reported in two different units, is kept apart per unit. */
 const keyOf = (r: LabResult) => (standardUnit(r.analyte) ? r.analyte : `${r.analyte}␟${normUnit(r.unit)}`);
 const nameOf = (key: string) => key.split("␟")[0]!;
@@ -122,7 +138,12 @@ function GroupedTable({
   const { t } = useTranslation();
   const fmt = useFormat();
   const labProvenance = useLabProvenance();
-  const [closed, setClosed] = useState<Set<string>>(new Set());
+  // Panels start collapsed; the ones you open stay open while you move around the app.
+  const [opened, setOpened] = useState<Set<string>>(() => new Set(readOpened()));
+  // How many date columns fit beside the test names, and which ones are showing per panel.
+  const perView = typeof window !== "undefined" && window.innerWidth >= 430 ? 3 : 2;
+  const [startAt, setStartAt] = useState<Record<string, number>>({});
+  const touchX = useRef<number | null>(null);
 
   const groups = useMemo(() => {
     const byGroup = new Map<string, LabResult[]>();
@@ -133,7 +154,8 @@ function GroupedTable({
     return LAB_GROUPS.filter((g) => byGroup.has(g.key)).map((g) => {
       const rows = byGroup.get(g.key)!;
       const analytes = [...new Set(rows.map(keyOf))].sort((x, y) => analyteOrder(x.split("␟")[0]!) - analyteOrder(y.split("␟")[0]!) || x.localeCompare(y));
-      const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
+      // Oldest on the left, newest on the right.
+      const dates = [...new Set(rows.map((r) => r.date))].sort();
       const latest = (a: string) => rows.filter((r) => keyOf(r) === a).sort((x, y) => y.date.localeCompare(x.date))[0]!;
       const abnormal = analytes.filter((a) => ["high", "low"].includes(flagFor(latest(a)))).length;
       return { ...g, rows, analytes, dates, latest, abnormal };
@@ -141,17 +163,24 @@ function GroupedTable({
   }, [results, panelById]);
 
   const toggle = (key: string) =>
-    setClosed((cur) => {
+    setOpened((cur) => {
       const next = new Set(cur);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      saveOpened([...next]);
       return next;
     });
 
   return (
     <div className="space-y-3">
       {groups.map((g) => {
-        const open = !closed.has(g.key);
+        const open = opened.has(g.key);
+        // Start on the most recent dates; the arrows step one date older or newer.
+        const maxStart = Math.max(0, g.dates.length - perView);
+        const start = Math.min(startAt[g.key] ?? maxStart, maxStart);
+        const shown = g.dates.slice(start, start + perView);
+        const step = (by: number) => setStartAt((cur) => ({ ...cur, [g.key]: Math.max(0, Math.min(maxStart, start + by)) }));
+        const short = (d: string) => fmt.date(d, { month: "short", year: "numeric" });
         return (
           <Card key={g.key} tone={g.tone} className="p-0">
             <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open} onClick={() => toggle(g.key)}>
@@ -172,12 +201,49 @@ function GroupedTable({
               <ChevronDown className={cn("h-5 w-5 shrink-0 transition", open && "rotate-180")} />
             </button>
             {open && (
-              <div className="mx-2 mb-2 overflow-x-auto rounded-2xl bg-white">
+              <div
+                className="mx-2 mb-2 overflow-x-auto rounded-2xl bg-white"
+                // Swipe left for newer dates, right for older.
+                onTouchStart={(e) => (touchX.current = e.touches[0]!.clientX)}
+                onTouchEnd={(e) => {
+                  const dx = e.changedTouches[0]!.clientX - (touchX.current ?? e.changedTouches[0]!.clientX);
+                  touchX.current = null;
+                  if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+                }}
+              >
+                {g.dates.length > perView && (
+                  <div className="flex items-center gap-2 border-b border-ink/5 px-2 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => step(-1)}
+                      disabled={start === 0}
+                      aria-label={t("Older results")}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream disabled:opacity-30"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <span className="min-w-0 flex-1 text-center text-xs font-semibold text-ink/60">
+                      {shown.length > 1 ? `${short(shown[0]!)} – ${short(shown[shown.length - 1]!)}` : short(shown[0]!)}
+                      <span className="block text-[11px] font-medium text-ink/45">
+                        {t("Dates {{a}}–{{b}} of {{n}}, oldest first", { a: start + 1, b: start + shown.length, n: g.dates.length })}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => step(1)}
+                      disabled={start >= maxStart}
+                      aria-label={t("Newer results")}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream disabled:opacity-30"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
                 <table className="w-full text-sm">
                   <thead className="text-xs text-ink/55">
                     <tr>
                       <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left">{t("Test")}</th>
-                      {g.dates.map((d) => (
+                      {shown.map((d) => (
                         <th key={d} className="whitespace-nowrap px-3 py-2 text-right">
                           {fmt.date(d, { day: "numeric", month: "short", year: "2-digit" })}
                         </th>
@@ -205,7 +271,7 @@ function GroupedTable({
                               </span>
                             </button>
                           </td>
-                          {g.dates.map((d) => {
+                          {shown.map((d) => {
                             const r = g.rows.find((x) => keyOf(x) === a && x.date === d);
                             return (
                               <td key={d} className="whitespace-nowrap px-3 py-2 text-right">
