@@ -26,7 +26,7 @@ export function AppointmentsPage() {
   const { t } = useTranslation();
   const fmt = useFormat();
   const appts = useLiveQuery(() => db.appointments.orderBy("createdAt").reverse().toArray(), []);
-  const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? [];
+  const facilities = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").toArray(), []) ?? [];
   const [filter, setFilter] = useState<Filter>("all");
   const [cancelling, setCancelling] = useState<Appointment | null>(null);
 

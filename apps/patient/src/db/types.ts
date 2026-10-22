@@ -161,22 +161,37 @@ export interface Facility {
   name: string;
   type: FacilityType;
   services: string[];
+  /** Insurers known to be accepted. Empty when not known (most official listings). */
   insurers: string[];
   county: string;
   town: string;
-  address: string;
+  address?: string;
   lat: number;
   lng: number;
-  phone: string;
+  phone?: string;
   email?: string;
-  hours: string;
-  rating: number;
-  reviews: number;
-  licenceBody: string;
-  licenceNumber: string;
-  licenceExpires: string;
-  licenceVerifiedAt: string;
+  hours?: string;
+  rating?: number;
+  reviews?: number;
+  licenceBody?: string;
+  licenceNumber?: string;
+  licenceExpires?: string;
+  licenceVerifiedAt?: string;
   delivers?: boolean;
+  /** "kmhfl": the Ministry of Health's Kenya Master Health Facility List. "demo": fictional sample listing. */
+  source: "kmhfl" | "demo";
+  /** Official KMHFL facility code. */
+  code?: number;
+  /** KMHFL facility type, e.g. "Dispensary", "Basic Health Centre", "Primary care hospitals". */
+  facilityType?: string;
+  /** KEPH level 1–6 (2 dispensary/clinic, 3 health centre, 4 county hospital, 5–6 referral). */
+  level?: number;
+  owner?: string;
+  subCounty?: string;
+  ward?: string;
+  /** 1: placed at the ward's centre, 2: at the county's centre (no GPS point listed). */
+  approxLocation?: 0 | 1 | 2;
+  beds?: number;
 }
 
 export type AppointmentStatus = "pending" | "proposed" | "confirmed" | "declined" | "cancelled" | "completed";

@@ -49,17 +49,53 @@ export const COUNTIES: { name: string; lat: number; lng: number }[] = [
   { name: "West Pokot", lat: 1.24, lng: 35.11 },
 ];
 
-export const INSURERS = [
-  "SHA (Social Health Authority)",
-  "AAR Insurance",
-  "Britam",
-  "CIC Insurance",
-  "Jubilee Health",
-  "Madison Insurance",
-  "Old Mutual",
-  "APA Insurance",
-  "Pay as you go (cash / M-Pesa)",
+/**
+ * Health cover in Kenya: the public scheme (SHA) and insurers that sell medical cover.
+ * Compiled October 2026 from public sources; check against the Insurance Regulatory Authority's
+ * gazetted list of licensed insurers before relying on it. Names used by the demo listings are kept.
+ */
+export interface InsurerInfo {
+  name: string;
+  kind: "public" | "private" | "payment";
+  note?: string;
+}
+
+export const INSURER_DETAILS: InsurerInfo[] = [
+  { name: "SHA (Social Health Authority)", kind: "public", note: "National scheme for every resident: primary care, hospital care, and chronic, critical and emergency illness." },
+  { name: "AAR Insurance", kind: "private" },
+  { name: "Allianz Insurance Kenya", kind: "private" },
+  { name: "APA Insurance", kind: "private" },
+  { name: "Britam", kind: "private" },
+  { name: "Cannon General Insurance", kind: "private" },
+  { name: "CIC Insurance", kind: "private" },
+  { name: "Corporate Insurance", kind: "private" },
+  { name: "Definite Assurance", kind: "private" },
+  { name: "Equity General Insurance", kind: "private" },
+  { name: "Fidelity Shield Insurance", kind: "private" },
+  { name: "First Assurance", kind: "private" },
+  { name: "GA Insurance", kind: "private" },
+  { name: "Geminia Insurance", kind: "private" },
+  { name: "Heritage Insurance", kind: "private" },
+  { name: "ICEA LION General Insurance", kind: "private" },
+  { name: "Intra Africa Assurance", kind: "private" },
+  { name: "Jubilee Health", kind: "private" },
+  { name: "Kenindia Assurance", kind: "private" },
+  { name: "Kenya Orient Insurance", kind: "private" },
+  { name: "Madison Insurance", kind: "private" },
+  { name: "Mayfair Insurance", kind: "private" },
+  { name: "Monarch Insurance", kind: "private" },
+  { name: "MUA Insurance (Kenya)", kind: "private" },
+  { name: "Occidental Insurance", kind: "private" },
+  { name: "Old Mutual", kind: "private", note: "Formerly UAP Old Mutual." },
+  { name: "Pacis Insurance", kind: "private" },
+  { name: "Pioneer General Insurance", kind: "private" },
+  { name: "Sanlam General Insurance", kind: "private" },
+  { name: "Takaful Insurance of Africa", kind: "private", note: "Sharia-compliant cover." },
+  { name: "Trident Insurance", kind: "private" },
+  { name: "Pay as you go (cash / M-Pesa)", kind: "payment" },
 ];
+
+export const INSURERS = INSURER_DETAILS.map((i) => i.name);
 
 export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
@@ -79,6 +115,9 @@ export const SERVICES = [
   "Cancer screening",
   "Vaccinations",
   "Pharmacy",
+  "TB care",
+  "Family planning",
+  "Inpatient care",
 ];
 
 export const COMMON_VACCINES = [

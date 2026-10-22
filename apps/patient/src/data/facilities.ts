@@ -5,7 +5,7 @@ import type { Facility } from "@/db/types";
  * Real listings will come from the Kenya Master Health Facility List and
  * licence checks (KMPDC / PPB), and only licensed facilities will be shown.
  */
-type Seed = Omit<Facility, "id" | "licenceVerifiedAt" | "licenceExpires" | "licenceNumber" | "licenceBody"> & {
+type Seed = Omit<Facility, "id" | "licenceVerifiedAt" | "licenceExpires" | "licenceNumber" | "licenceBody" | "source"> & {
   licenceBody?: string;
 };
 
@@ -40,6 +40,7 @@ export function demoFacilities(): Facility[] {
   return SEEDS.map((s, i) => ({
     ...s,
     id: `fac-${String(i + 1).padStart(3, "0")}`,
+    source: "demo" as const,
     ...licence(s.type, i),
     licenceExpires: `${year + 1}-06-30`,
     licenceVerifiedAt: new Date(Date.now() - (i % 5) * 86400000 * 7).toISOString(),

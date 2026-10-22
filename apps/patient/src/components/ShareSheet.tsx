@@ -29,7 +29,8 @@ type Step = "what" | "who" | "consent" | "done";
 export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClose: () => void; facilityId?: string }) {
   const { t, i18n } = useTranslation();
   const fmt = useFormat();
-  const facilities = useLiveQuery(() => db.facilities.orderBy("county").toArray(), []) ?? [];
+  // Only partner facilities can receive a summary through the app; any other place gets a link.
+  const facilities = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").sortBy("county"), []) ?? [];
   const records = active(useLiveQuery(() => db.records.orderBy("date").reverse().toArray(), []));
   const [step, setStep] = useState<Step>("what");
   const [type, setType] = useState<SummaryShare["summaryType"]>("full");
@@ -49,8 +50,9 @@ export function ShareSheet({ open, onClose, facilityId }: { open: boolean; onClo
     setType("full");
     setSections(SUMMARY_TYPES.full.sections);
     setRecordIds([]);
-    setRecipient(facilityId ?? "link");
+    setRecipient(facilityId?.startsWith("fac-") ? facilityId : "link");
     setLinkLabel("");
+    if (facilityId && !facilityId.startsWith("fac-")) void db.facilities.get(facilityId).then((f) => f && setLinkLabel(f.name));
     setPurpose("");
     setHours(24 * 7);
     setAgree(false);

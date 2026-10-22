@@ -1,3 +1,4 @@
+import { isListedActive } from "@/domain/facility";
 import type { Facility } from "@/db/types";
 import type { Extraction } from "./parse";
 
@@ -21,7 +22,7 @@ export interface Verification {
 
 export interface VerifyInput {
   extraction: Extraction;
-  facility?: Pick<Facility, "name" | "licenceExpires" | "licenceBody" | "licenceNumber">;
+  facility?: Pick<Facility, "name" | "source" | "licenceExpires" | "licenceBody" | "licenceNumber">;
   handwritten: boolean;
   stampFound: boolean;
   signatureFound: boolean;
@@ -39,7 +40,7 @@ export interface VerifyInput {
  */
 export function assessVerification(i: VerifyInput): Verification {
   const e = i.extraction;
-  const licensed = !!i.facility && i.facility.licenceExpires >= i.today;
+  const licensed = !!i.facility && isListedActive(i.facility, i.today);
   const signature = i.signatureFound || /electronically signed|digitally signed/i.test(e.notes ?? "");
 
   const checks: VerificationCheck[] = [

@@ -1,11 +1,21 @@
 import { db } from "./db";
 import { demoFacilities } from "@/data/facilities";
+import { KMHFL_VERSION } from "@/data/kmhfl";
 import type { LabResult } from "./types";
 import { addDays, addMonths, nowIso, toDateKey, uid } from "@/lib/utils";
 
-/** Facilities are reference data; load them on first run. */
+/**
+ * Facilities are reference data: the official Kenya Master Health Facility List plus the demo
+ * listings the sample documents refer to. Reloaded when the bundled list changes.
+ */
 export async function ensureFacilities() {
-  if ((await db.facilities.count()) === 0) await db.facilities.bulkPut(demoFacilities());
+  if ((await db.facilities.where("id").startsWith("fac-").count()) === 0) await db.facilities.bulkPut(demoFacilities());
+  const loaded = await db.settings.get("facilityData");
+  if (loaded?.value === KMHFL_VERSION) return;
+  const { loadKmhfl } = await import("@/data/kmhfl");
+  await db.facilities.where("id").startsWith("kmhfl-").delete();
+  await db.facilities.bulkPut(await loadKmhfl());
+  await db.settings.put({ key: "facilityData", value: KMHFL_VERSION });
 }
 
 /** Fill the current profile with realistic sample health data (demo only). */

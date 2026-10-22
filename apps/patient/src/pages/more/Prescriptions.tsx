@@ -36,7 +36,7 @@ export function PrescriptionsPage() {
   const meds = active(useLiveQuery(() => db.medications.toArray(), []));
   const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
   const requests = useLiveQuery(() => db.medRequests.orderBy("createdAt").reverse().toArray(), []) ?? [];
-  const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? [];
+  const facilities = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").toArray(), []) ?? [];
   const [selected, setSelected] = useState<string[]>([]);
   const [requestType, setRequestType] = useState<"repeat" | "acute" | null>(null);
   const [editMed, setEditMed] = useState<Medication | null | undefined>(undefined);
@@ -236,7 +236,8 @@ function RequestCard({ req, pharmacyName }: { req: MedRequest; pharmacyName: str
 function RequestSheet({ type, meds, onClose, onDone }: { type: "repeat" | "acute" | null; meds: Medication[]; onClose: () => void; onDone: () => void }) {
   const { t } = useTranslation();
   const profile = useProfile();
-  const pharmacies = useLiveQuery(() => db.facilities.where("type").equals("pharmacy").toArray(), []) ?? [];
+  // Requests can only be sent to partner pharmacies through the app.
+  const pharmacies = useLiveQuery(() => db.facilities.where("id").startsWith("fac-").filter((f) => f.type === "pharmacy").toArray(), []) ?? [];
   const prescriptions = active(useLiveQuery(() => db.records.where("category").equals("prescription").reverse().sortBy("date"), []));
   const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
   const [pharmacyId, setPharmacyId] = useState("");

@@ -47,7 +47,6 @@ export function ScanUploadSheet({
   const navigate = useNavigate();
   const fmt = useFormat();
   const profile = useProfile();
-  const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? [];
   const allergies = useLiveQuery(() => db.allergies.toArray(), []) ?? [];
   const [step, setStep] = useState<Step>("pick");
   const [file, setFile] = useState<File | null>(null);
@@ -83,6 +82,7 @@ export function ScanUploadSheet({
     setStep("scanning");
     setScanError(null);
     try {
+      const facilities = await db.facilities.toArray();
       const [result, ex] = await Promise.all([scanDocument(f, { facilities, profile }, (s, p) => setStage({ s, p })), existingFor()]);
       const e = result.extraction;
       setScan(result);

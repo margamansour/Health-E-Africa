@@ -242,7 +242,10 @@ function matchFacility(text: string, lines: string[], facilities: ExtractContext
   let best: { id: string; name: string } | undefined;
   for (const f of facilities) {
     const n = norm(f.name);
-    if (n && hay.includes(` ${n} `) && (!best || n.length > norm(best.name).length)) best = f;
+    // Names like "Root" or "Dr Mwangi" would match ordinary words or a doctor's name, so a name
+    // must say what kind of place it is (clinic, hospital…) or be at least three words long.
+    const specific = n.includes(" ") && (FACILITY_WORDS.test(f.name) || n.split(" ").length >= 3);
+    if (specific && hay.includes(` ${n} `) && (!best || n.length > norm(best.name).length)) best = f;
   }
   if (best) return { facilityId: best.id, facilityName: best.name };
   const guess = lines
