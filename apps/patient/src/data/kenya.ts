@@ -99,26 +99,75 @@ export const INSURERS = INSURER_DETAILS.map((i) => i.name);
 
 export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-export const SERVICES = [
-  "General practice",
-  "Maternity",
-  "Paediatrics",
-  "Diabetes care",
-  "Hypertension clinic",
-  "HIV care",
-  "Dental",
-  "Eye care",
-  "Radiology",
-  "Laboratory",
-  "Physiotherapy",
-  "Mental health",
-  "Cancer screening",
-  "Vaccinations",
-  "Pharmacy",
-  "TB care",
-  "Family planning",
-  "Inpatient care",
+/**
+ * Services and specialties a place can offer, grouped by area of care. Broad enough for patients
+ * to search by; not every subspecialty. Names already used by listings are kept as they are.
+ */
+export const SERVICE_GROUPS: { group: string; services: string[] }[] = [
+  {
+    group: "Primary and urgent care",
+    services: ["General practice", "Emergency & accident (A&E)", "Inpatient care", "Vaccinations", "Travel health", "Occupational health", "Home-based care"],
+  },
+  {
+    group: "Medical specialties",
+    services: [
+      "Internal medicine",
+      "Cardiology (heart)",
+      "Hypertension clinic",
+      "Diabetes care",
+      "Endocrinology (hormones & thyroid)",
+      "Gastroenterology (stomach & bowel)",
+      "Hepatology (liver)",
+      "Nephrology (kidney)",
+      "Dialysis",
+      "Respiratory medicine (chest & lungs)",
+      "Neurology (brain & nerves)",
+      "Rheumatology (joints & autoimmune)",
+      "Haematology (blood)",
+      "Infectious diseases",
+      "HIV care",
+      "TB care",
+      "Dermatology (skin)",
+      "Allergy & immunology",
+      "Geriatrics (older people)",
+    ],
+  },
+  {
+    group: "Surgery",
+    services: [
+      "General surgery",
+      "Orthopaedics (bones & joints)",
+      "Trauma surgery",
+      "ENT (ear, nose & throat)",
+      "Urology",
+      "Neurosurgery",
+      "Cardiothoracic surgery",
+      "Plastic & reconstructive surgery",
+      "Paediatric surgery",
+      "Vascular surgery",
+      "Day surgery",
+    ],
+  },
+  {
+    group: "Women's and reproductive health",
+    services: ["Maternity", "Antenatal care", "Obstetrics & gynaecology", "Family planning", "Fertility", "Breast care"],
+  },
+  { group: "Children's health", services: ["Paediatrics", "Newborn care (neonatology)", "Child growth & development"] },
+  { group: "Cancer care", services: ["Oncology", "Cancer screening", "Radiotherapy", "Palliative care"] },
+  { group: "Mental health", services: ["Mental health", "Psychiatry", "Counselling & psychology", "Addiction & rehabilitation"] },
+  { group: "Eyes, teeth and ears", services: ["Eye care", "Ophthalmology (eye surgery)", "Optician", "Dental", "Orthodontics", "Hearing (audiology)"] },
+  {
+    group: "Tests and scans",
+    services: ["Laboratory", "Radiology", "X-ray", "Ultrasound", "CT & MRI scans", "ECG & heart tests", "Endoscopy", "Blood transfusion"],
+  },
+  {
+    group: "Therapy and rehabilitation",
+    services: ["Physiotherapy", "Occupational therapy", "Speech & language therapy", "Nutrition & dietetics", "Rehabilitation"],
+  },
+  { group: "Pharmacy", services: ["Pharmacy"] },
 ];
+
+export const SERVICES = SERVICE_GROUPS.flatMap((g) => g.services);
 
 export const COMMON_VACCINES = [
   "BCG",

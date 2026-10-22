@@ -43,11 +43,11 @@ def norm(s):
 county_by_norm = {norm(c): c for c in counties}
 county_by_norm.update({norm("Elgeyo Marakwet"): "Elgeyo-Marakwet", norm("Tharaka Nithi"): "Tharaka-Nithi", norm("Muranga"): "Murang'a", norm("Taita Taveta"): "Taita-Taveta", norm("Trans-Nzoia"): "Trans Nzoia"})
 
-SERVICES = [
-    "General practice", "Maternity", "Paediatrics", "Diabetes care", "Hypertension clinic", "HIV care", "Dental", "Eye care",
-    "Radiology", "Laboratory", "Physiotherapy", "Mental health", "Cancer screening", "Vaccinations", "Pharmacy", "TB care",
-    "Family planning", "Inpatient care",
-]
+# The app's service list (SERVICE_GROUPS in src/data/kenya.ts), so names always match.
+_kenya = (here / "src/data/kenya.ts").read_text()
+_groups = _kenya[_kenya.index("export const SERVICE_GROUPS") : _kenya.index("export const SERVICES =")]
+SERVICES = [x for block in re.findall(r"services:\s*\[(.*?)\]", _groups, re.S) for x in re.findall(r'"([^"]+)"', block)]
+assert len(SERVICES) == len(set(SERVICES)), "duplicate service names"
 S = {s: i for i, s in enumerate(SERVICES)}
 
 # Kind of place, as Find care groups them.
@@ -121,15 +121,52 @@ head = next(it)
 older = {r[0]: dict(zip(head, r)) for r in it if r[0]}
 
 FLAG_SERVICES = {
-    "OPD": ["General practice"], "ANC": ["Maternity"], "BEOC": ["Maternity"], "CEOC": ["Maternity"], "CAES SEC": ["Maternity"],
+    "OPD": ["General practice"], "ANC": ["Maternity", "Antenatal care"], "BEOC": ["Maternity"],
+    "CEOC": ["Maternity", "Obstetrics & gynaecology"], "CAES SEC": ["Maternity", "Obstetrics & gynaecology"],
     "ART": ["HIV care"], "PMTCT": ["HIV care"], "HCT": ["HIV care"], "EPI": ["Vaccinations"], "FP": ["Family planning"],
-    "RAD/XRAY": ["Radiology"], "TB DIAG": ["TB care"], "TB TREAT": ["TB care"], "TB LABS": ["Laboratory", "TB care"],
-    "BLOOD": ["Laboratory"], "IPD": ["Inpatient care"], "C-IMCI": ["Paediatrics"], "GROWM": ["Paediatrics"],
+    "RAD/XRAY": ["Radiology", "X-ray"], "TB DIAG": ["TB care"], "TB TREAT": ["TB care"], "TB LABS": ["Laboratory", "TB care"],
+    "BLOOD": ["Laboratory", "Blood transfusion"], "IPD": ["Inpatient care"], "C-IMCI": ["Paediatrics"],
+    "GROWM": ["Paediatrics", "Child growth & development"], "HBC": ["Home-based care"],
 }
 TYPE_SERVICES = {
-    "laboratory": ["Laboratory"], "radiology clinic": ["Radiology"], "pharmacy": ["Pharmacy"], "dental clinic": ["Dental"],
-    "ophthalmology": ["Eye care"], "vct": ["HIV care"], "regional blood transfusion centre": ["Laboratory"], "blood bank": ["Laboratory"],
+    "laboratory": ["Laboratory"], "radiology clinic": ["Radiology", "X-ray", "Ultrasound"], "pharmacy": ["Pharmacy"],
+    "dental clinic": ["Dental"], "ophthalmology": ["Eye care", "Ophthalmology (eye surgery)"], "vct": ["HIV care", "Counselling & psychology"],
+    "regional blood transfusion centre": ["Laboratory", "Blood transfusion"], "blood bank": ["Blood transfusion"],
+    "dialysis center": ["Dialysis", "Nephrology (kidney)"], "rehab. center - drug and substance abuse": ["Addiction & rehabilitation", "Mental health"],
+    "nursing and maternity home": ["Maternity"], "nursing homes": ["Inpatient care"],
 }
+
+# Services a facility's name makes clear ("... Dental Clinic", "... Eye Hospital").
+NAME_SERVICES = [
+    (r"dental|dentist", ["Dental"]), (r"orthodont", ["Orthodontics", "Dental"]),
+    (r"\beye\b|ophthalm|vision|optical|optic", ["Eye care"]), (r"optician|optical", ["Optician"]),
+    (r"maternity|mother|women|wanawake", ["Maternity", "Antenatal care"]), (r"gynae|gyne|obstet", ["Obstetrics & gynaecology"]),
+    (r"fertility|ivf", ["Fertility"]), (r"children|child|paediatric|pediatric|watoto", ["Paediatrics"]),
+    (r"laborator|\blab\b|diagnostic|pathology", ["Laboratory"]), (r"imaging|radiolog|x-?ray|scan", ["Radiology", "X-ray"]),
+    (r"ultrasound|sonograph", ["Ultrasound"]), (r"physio", ["Physiotherapy"]), (r"dialysis|renal|kidney", ["Dialysis", "Nephrology (kidney)"]),
+    (r"cancer|oncolog", ["Oncology"]), (r"hospice|palliative", ["Palliative care"]), (r"rehab", ["Rehabilitation"]),
+    (r"psychiatr|mental", ["Mental health", "Psychiatry"]), (r"\bent\b|ear,? nose", ["ENT (ear, nose & throat)"]),
+    (r"skin|dermat", ["Dermatology (skin)"]), (r"heart|cardiac|cardio", ["Cardiology (heart)"]), (r"orthop|bone", ["Orthopaedics (bones & joints)"]),
+    (r"diabet", ["Diabetes care"]), (r"\bvct\b|\bccc\b|comprehensive care cent", ["HIV care"]), (r"\btb\b|tubercul|chest clinic", ["TB care"]),
+    (r"chest", ["Respiratory medicine (chest & lungs)"]), (r"surgical|surgery|surgeon", ["General surgery"]), (r"blood transfusion|blood bank", ["Blood transfusion"]),
+    (r"family planning|reproductive", ["Family planning"]), (r"pharmac|chemist", ["Pharmacy"]), (r"nursing home", ["Inpatient care"]),
+    (r"cottage", ["Inpatient care"]), (r"occupational|staff clinic|company", ["Occupational health"]), (r"travel", ["Travel health"]),
+]
+
+# The standard service package for each KEPH level (Kenya Essential Package for Health).
+def level_services(kind, level, ftype):
+    t = ftype.lower()
+    out = []
+    if kind in ("clinic", "hospital") and "vct" not in t and "dental" not in t and "ophthalmology" not in t and "rehab" not in t:
+        out.append("General practice")
+    if level == 3 and kind == "clinic" and "health centre" in t:
+        out += ["Maternity", "Antenatal care", "Laboratory"]
+    if kind == "hospital" and level >= 4:
+        out += ["Inpatient care", "Emergency & accident (A&E)", "Maternity", "Antenatal care", "Laboratory", "X-ray", "Ultrasound", "General surgery", "Pharmacy"]
+    if kind == "hospital" and level >= 5:
+        out += ["Internal medicine", "Paediatrics", "Obstetrics & gynaecology", "Orthopaedics (bones & joints)", "Radiology", "CT & MRI scans", "Mental health"]
+    return out
+
 
 rows = []
 stats = {"gps": 0, "ward": 0, "county": 0, "phone": 0, "services": 0}
@@ -160,11 +197,14 @@ for r in csv.DictReader(open(src / "kenya-health-access-gap-analysis/data/kenya_
         if o.get(flag) is True:
             services.update(names)
     services.update(TYPE_SERVICES.get(r["Facility type"].lower(), []))
-    if kind == "hospital":
-        services.add("General practice")
+    for pattern, names in NAME_SERVICES:
+        if re.search(pattern, r["Name"], re.I):
+            services.update(names)
+    lvl = int(r["Keph level"].replace("Level ", "")) if r["Keph level"].replace("Level ", "").isdigit() else 0
+    services.update(level_services(kind, lvl, r["Facility type"]))
     if services:
         stats["services"] += 1
-    mask = sum(1 << S[s] for s in services)
+    service_ids = sorted(S[s] for s in services)
     tel = phone(o.get("Official Mobile"), o.get("Official Landline"), o.get("Official Alternate No"))
     if tel:
         stats["phone"] += 1
@@ -195,7 +235,7 @@ for r in csv.DictReader(open(src / "kenya-health-access-gap-analysis/data/kenya_
         reg.replace(" (Private Practice)", "").replace(" - Private Practice (deleted)", ""),
         r["Registration_number"].strip() if r["Registration_number"] not in ("None", "") else "",
         beds,
-        mask,
+        service_ids,
         town,
     ])
 

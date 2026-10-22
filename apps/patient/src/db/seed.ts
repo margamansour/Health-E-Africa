@@ -12,6 +12,7 @@ export async function ensureFacilities() {
   if ((await db.facilities.where("id").startsWith("fac-").count()) === 0) await db.facilities.bulkPut(demoFacilities());
   const loaded = await db.settings.get("facilityData");
   if (loaded?.value === KMHFL_VERSION) return;
+  await db.facilities.bulkPut(demoFacilities());
   const { loadKmhfl } = await import("@/data/kmhfl");
   await db.facilities.where("id").startsWith("kmhfl-").delete();
   await db.facilities.bulkPut(await loadKmhfl());

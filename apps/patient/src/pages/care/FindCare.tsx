@@ -9,7 +9,7 @@ import { Badge, Button, Card, Checkbox, Chips, Field, KeyValue, Notice, Select, 
 import { Page, PageHeader } from "@/components/layout";
 import { BookingSheet } from "@/components/BookingSheet";
 import { ShareSheet } from "@/components/ShareSheet";
-import { INSURER_DETAILS, INSURERS, SERVICES } from "@/data/kenya";
+import { INSURER_DETAILS, INSURERS, SERVICE_GROUPS } from "@/data/kenya";
 import { KMHFL_SOURCE } from "@/data/kmhfl";
 import { isListedActive } from "@/domain/facility";
 import { useNavigate } from "react-router";
@@ -254,10 +254,14 @@ function FiltersSheet({ open, onClose, value, onChange, hasInsurance }: { open: 
           {(id) => (
             <Select id={id} value={value.service} onChange={(e) => onChange({ ...value, service: e.target.value })}>
               <option value="">{t("Any service")}</option>
-              {SERVICES.map((s) => (
-                <option key={s} value={s}>
-                  {t(s)}
-                </option>
+              {SERVICE_GROUPS.map((g) => (
+                <optgroup key={g.group} label={t(g.group)}>
+                  {g.services.map((s) => (
+                    <option key={s} value={s}>
+                      {t(s)}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
           )}
@@ -429,7 +433,7 @@ function FacilityDetail({ facility: f, km, onClose, onBook, onShare }: { facilit
                 <Badge key={s}>{t(s)}</Badge>
               ))}
             </div>
-            {f.source === "kmhfl" && <p className="mt-1 text-[11px] text-ink/45">{t("From an older official listing. Call to check what's offered now.")}</p>}
+            {f.source === "kmhfl" && <p className="mt-1 text-[11px] text-ink/45">{t("Based on older official records, the facility's name and its level of care. Call to check what's offered now.")}</p>}
           </div>
         )}
         <div>
